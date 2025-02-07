@@ -11,17 +11,50 @@ port = "/dev/cu.usbmodem1101" # for mac
 ser = None
 done = False
 
+cmd_str = ""
+message = '' # received
+messagebuffer = ''
+telemetry = {
+    'v': 0
+}
+delimiter = '\t'
+
 wheel_speed = 0
+
+def main():
+    global done, ser, cmd_str
+
+    send_handler = PeriodicSleeper(send_to_estop, 0.01)
+    while not done:
+        while(ser is None):
+            try:
+                ser = serial.Serial(port, baudrate=115200, timeout=1, stopbits=serial.STOPBITS_TWO)
+            except:
+                ser = None
+                print("plug in estop pls")
+                time.sleep(0.5)
+        
+        handle_joysticks()
+        recv_from_estop() #updates joy_data
+
+        wheel_speed = int(joy_data['righty'] * 4096 + 4096)
+        mode = 0 if joy_data['leftbumper'] else 1
+        print(wheel_speed, mode)
+
+        cmd_str = ""
+        cmd_str += f"f0:{wheel_speed:05}\n"
+        cmd_str += f"m0:{mode:05}\n"
+        cmd_str += "#\t"
+
+        time.sleep(0.01)
+
+
 
 
 def send_to_estop():
-    global ser
+    global ser, cmd_str
     if(ser is None):
         return
-
-    cmd_str = ""
-    cmd_str += f"f0:{wheel_speed:05}\n"
-    cmd_str += "#\t"
 
     try:
         ser.write(cmd_str.encode())
@@ -30,12 +63,7 @@ def send_to_estop():
         ser = None
         print("Estop disconnected")
 
-message = ''
-messagebuffer = ''
-telemetry = {
-    'v': 0
-} #data back
-delimiter = '\t'
+
 def recv_from_estop():
     # print(ser.read_all().decode("utf-8", errors='ignore'), end=None)
     global ser
@@ -200,33 +228,10 @@ def handle_joysticks():
 
             break #assume only one joystick
 
-
-
-send_handler = PeriodicSleeper(send_to_estop, 0.01)
-while not done:
-
-    while(ser is None):
-        try:
-            ser = serial.Serial(port, baudrate=115200, timeout=1, stopbits=serial.STOPBITS_TWO)
-        except:
-            ser = None
-            print("plug in estop pls")
-            time.sleep(0.1)
-    
-    handle_joysticks()
-    recv_from_estop()
-
-    wheel_speed = int(joy_data['righty'] * 4096 + 4096)
-
-    print(wheel_speed)
-
-    
-
     if(not axes_calibrated):
-        print("please calibrate joysticks")
-        print("move axes in a circle")
+            print("please calibrate joysticks")
+            print("move axes in a circle")
 
-    time.sleep(0.01)
 
-    # wheel_speed = joy_data
-    # recv_from_estop()
+if __name__ == "__main__":
+    main()
