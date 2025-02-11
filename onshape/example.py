@@ -1,14 +1,28 @@
 import onshape_robotics_toolkit as osa
 from onshape_robotics_toolkit.connect import Client
 from onshape_robotics_toolkit.models.document import Document
+from onshape_robotics_toolkit.log import LOGGER
+
+# get directory of this file
+import os
+onshape_dir = os.path.dirname(os.path.abspath(__file__))
+
+print(os.getcwd())
+if os.getcwd() != onshape_dir:
+    print(f"Current directory: {os.getcwd()}")
+    print(f"Please run this file from {onshape_dir}")
+    print(f"Run the following in terminal:")
+    print(f"cd {onshape_dir}")
+    exit()
 
 # Initialize the client
+LOGGER._log_path = f"{onshape_dir}/logs"
 client = osa.Client(
-    env="./.env"
+    env=f"{onshape_dir}/.env"
 )
 
 doc = Document.from_url(
-    url="https://cad.onshape.com/documents/ca20d2f1622a5c39ca976405/w/3d8eb311791b3275fabcd834/e/41337b17eb94f64bb98f0912"
+    url="https://cad.onshape.com/documents/e58f809a1903266b25fe8a9a/w/7677e945c3ad2c0522ac620f/e/b9b0680502e420b7cf8928f3"
 )
 
 # Retrieve the Variable Studio element
@@ -33,7 +47,7 @@ from onshape_robotics_toolkit.parse import (
 )
 
 # Retrieve the assembly
-assembly = client.get_assembly(doc.did, doc.wtype, doc.wid, elements["assembly"].id)
+assembly = client.get_assembly(doc.did, doc.wtype, doc.wid, elements["Assembly 1"].id)
 
 # Extract components
 instances, occurrences, id_to_name_map = get_instances(assembly, max_depth=1)
@@ -41,9 +55,11 @@ instances, occurrences, id_to_name_map = get_instances(assembly, max_depth=1)
 subassemblies, rigid_subassemblies = get_subassemblies(assembly, client, instances)
 parts = get_parts(assembly, rigid_subassemblies, client, instances)
 
+print(parts)
+
 import json
 
-with open('parts.json', 'w') as f:
+with open(f'{onshape_dir}/parts.json', 'w') as f:
     print(parts, file=f)
 
 
@@ -57,11 +73,11 @@ from onshape_robotics_toolkit.robot import Robot
 graph, root_node = create_graph(occurrences=occurrences, instances=instances, parts=parts, mates=mates)
 
 robot = get_robot(assembly, graph, root_node, parts, mates, relations, client, "test")
-robot.show_graph("rock1.png")
+robot.show_graph(f"{onshape_dir}/rock1.png")
 
 mjcf_str = robot.to_urdf()
 
-with open("rock1.mjcf", "w", encoding="utf-8") as f:
-    f.write(mjcf_str)
+# with open("rock1.mjcf", "w", encoding="utf-8") as f:
+#     f.write(mjcf_str)
 
-robot.save("rock1.urdf")
+robot.save(f"{onshape_dir}/rock1.urdf")
