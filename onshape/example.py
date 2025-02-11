@@ -6,8 +6,6 @@ from onshape_robotics_toolkit.log import LOGGER
 # get directory of this file
 import os
 onshape_dir = os.path.dirname(os.path.abspath(__file__))
-
-print(os.getcwd())
 if os.getcwd() != onshape_dir:
     print(f"Current directory: {os.getcwd()}")
     print(f"Please run this file from {onshape_dir}")
@@ -16,9 +14,9 @@ if os.getcwd() != onshape_dir:
     exit()
 
 # Initialize the client
-LOGGER._log_path = f"{onshape_dir}/logs"
+LOGGER._log_path = "logs"
 client = osa.Client(
-    env=f"{onshape_dir}/.env"
+    env=".env"
 )
 
 doc = Document.from_url(
@@ -57,9 +55,7 @@ parts = get_parts(assembly, rigid_subassemblies, client, instances)
 
 print(parts)
 
-import json
-
-with open(f'{onshape_dir}/parts.json', 'w') as f:
+with open('parts.json', 'w') as f:
     print(parts, file=f)
 
 
@@ -73,11 +69,11 @@ from onshape_robotics_toolkit.robot import Robot
 graph, root_node = create_graph(occurrences=occurrences, instances=instances, parts=parts, mates=mates)
 
 robot = get_robot(assembly, graph, root_node, parts, mates, relations, client, "test")
-robot.show_graph(f"{onshape_dir}/rock1.png")
+robot.show_graph("rock1.png")
 
 mjcf_str = robot.to_urdf()
 
 # with open("rock1.mjcf", "w", encoding="utf-8") as f:
 #     f.write(mjcf_str)
 
-robot.save(f"{onshape_dir}/rock1.urdf")
+robot.save("rock1.urdf")

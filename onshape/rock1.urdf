@@ -7,7 +7,7 @@
         <mesh filename="meshes/foot_1.stl"/>
       </geometry>
       <material name="foot_1-material">
-        <color rgba="1 0 0 1"/>
+        <color rgba="0 1 1 1"/>
       </material>
     </visual>
     <collision name="foot_1_collision">
@@ -29,7 +29,7 @@
         <mesh filename="meshes/Part_2_1.stl"/>
       </geometry>
       <material name="Part_2_1-material">
-        <color rgba="1 0 0.5 1"/>
+        <color rgba="0 0 1 1"/>
       </material>
     </visual>
     <collision name="Part_2_1_collision">
@@ -51,7 +51,7 @@
         <mesh filename="meshes/Part_3_1.stl"/>
       </geometry>
       <material name="Part_3_1-material">
-        <color rgba="0 1 1 1"/>
+        <color rgba="1 1 1 1"/>
       </material>
     </visual>
     <collision name="Part_3_1_collision">
@@ -73,7 +73,7 @@
         <mesh filename="meshes/Part_4_1.stl"/>
       </geometry>
       <material name="Part_4_1-material">
-        <color rgba="1 1 0 1"/>
+        <color rgba="1 0 0 1"/>
       </material>
     </visual>
     <collision name="Part_4_1_collision">
