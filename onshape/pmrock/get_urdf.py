@@ -3,6 +3,8 @@ from onshape_robotics_toolkit.connect import Client
 from onshape_robotics_toolkit.models.document import Document
 from onshape_robotics_toolkit.log import LOGGER
 
+import time
+
 # get directory of this file
 import os
 onshape_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,12 +17,16 @@ if os.getcwd() != onshape_dir:
 
 # Initialize the client
 LOGGER._log_path = "logs"
+
+#make a directory for logs if it doesn't exist
+if not os.path.exists(LOGGER._log_path):
+    os.makedirs(LOGGER._log_path)
 client = osa.Client(
-    env=".env"
+    env="./../.env"
 )
 
 doc = Document.from_url(
-    url="https://cad.onshape.com/documents/e58f809a1903266b25fe8a9a/w/7677e945c3ad2c0522ac620f/e/b9b0680502e420b7cf8928f3"
+    url="https://cad.onshape.com/documents/e4e428d4cfd3a406f9a849f8/w/165e68061700713e3a2b8fda/e/be5e169679c58870424516dc"
 )
 
 # Retrieve the Variable Studio element
@@ -28,13 +34,23 @@ elements = client.get_elements(doc.did, doc.wtype, doc.wid)
 
 print(f"Elements:\n {elements}")
 
-# variables = client.get_variables(doc.did, doc.wid, elements["variables"].id)
-# variables["wheelDiameter"].expression = "300 mm"
+# for i in range(22, 50, 2):
+#     variables = client.get_variables(doc.did, doc.wid, elements["Variable Studio 1"].id)
+#     variables["pendulum_radius"].expression = f"{i} mm"
+#     variables["pendulum_height"].expression = f"{i} mm"
+#     variables["shell_com_height"].expression = f"{i-12} mm"
+#     client.set_variables(doc.did, doc.wid, elements["Variable Studio 1"].id, variables)
+#     print(i)
+#     time.sleep(0.1)
+# exit()
 # variables["wheelThickness"].expression = "71 mm"
 # variables["forkAngle"].expression = "20 deg"
 
 # Save the updated variables back to the Variable Studio
-# client.set_variables(doc.did, doc.wid, elements["variables"].id, variables)
+variables = client.get_variables(doc.did, doc.wid, elements["Variable Studio 1"].id)
+variables["pendulum_height"].expression = f"{300} mm"
+variables["shell_com_height"].expression = f"{288} mm"
+client.set_variables(doc.did, doc.wid, elements["Variable Studio 1"].id, variables)
 
 from onshape_robotics_toolkit.parse import (
     get_instances,
