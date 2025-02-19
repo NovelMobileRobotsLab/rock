@@ -1,0 +1,81 @@
+<?xml version="1.0" ?>
+<robot name="pmrock">
+  <link name="foot_1">
+    <visual name="foot_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/foot_1.stl"/>
+      </geometry>
+      <material name="foot_1-material">
+        <color rgba="0 1 1 1"/>
+      </material>
+    </visual>
+    <collision name="foot_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/foot_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.0014241887"/>
+      <inertia ixx="1.4241887e-08" iyy="1.4241887e-08" izz="1.4241887e-08" ixy="0" ixz="0" iyz="0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="pendulum_1">
+    <visual name="pendulum_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+      <material name="pendulum_1-material">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision name="pendulum_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.0998712"/>
+      <inertia ixx="6.0770112e-06" iyy="1.8067333e-05" izz="1.8067333e-05" ixy="0" ixz="0" iyz="0"/>
+      <origin xyz="-0.056818182 0 -0.002" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="shell_com_1">
+    <visual name="shell_com_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell_com_1.stl"/>
+      </geometry>
+      <material name="shell_com_1-material">
+        <color rgba="1 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision name="shell_com_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell_com_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0"/>
+      <inertia ixx="0" iyy="0" izz="0" ixy="0" ixz="0" iyz="0"/>
+      <origin xyz="-0.002 0 0.081" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <joint name="Revolute_1" type="revolute">
+    <origin xyz="0.002 0 0.148" rpy="3.1415927 0 0"/>
+    <parent link="foot_1"/>
+    <child link="pendulum_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+  <joint name="Fastened_1" type="fixed">
+    <origin xyz="0.002 0 0.076" rpy="3.1415927 0 0"/>
+    <parent link="foot_1"/>
+    <child link="shell_com_1"/>
+  </joint>
+</robot>
