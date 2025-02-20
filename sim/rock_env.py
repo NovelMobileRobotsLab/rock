@@ -14,11 +14,12 @@ class RockEnv:
         "num_commands": 1,
         "num_actions": 1, # angle of pendulum
 
-        "num_obs_per_step": 6,
+        "num_obs_per_step": 8,
         "num_obs_hist": 3,  # number of previous observations to include
 
         "reward_scales": {
-            "lin_vel": 2.0,
+            "alive": 1.0,
+            "regularize": 0.1,
         },
 
         # joint names, initial position
@@ -32,17 +33,18 @@ class RockEnv:
         "kd": 100,
 
         # termination
-        "termination_if_roll_greater_than": 80,  # degree
-        "termination_if_pitch_greater_than": 80,
+        "termination_if_roll_greater_than": 60,  # degree
+        "termination_if_pitch_greater_than": 60,
 
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.010],
-        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
+        "base_init_pos": [0.0, 0.0, 0.020],
+        "base_init_quat": [1., 0., 0.07, 0.],
 
         "dt": 0.001,
         "substeps": 2,
         "episode_length_s": 3.0,
-        "clip_actions": 100.0,
+        "max_torque": 0.6,
+        "max_motor_speed": 276, # 2640 rpm 
 
         "friction": 1.0,
     }
@@ -170,9 +172,14 @@ class RockEnv:
 
 
     def step(self, actions):
-        self.actions = torch.clip(actions, -self.cfg["clip_actions"], self.cfg["clip_actions"])
+        self.actions = actions
 
-        # self.get_robot().control_dofs_force(100*torch.ones((self.num_envs, len(self.motor_dofs)), device=self.device), dofs_idx_local=self.motor_dofs) #rad/s
+        motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
+
+        torques = 100*torch.clip(self.actions, -self.cfg["max_torque"], self.cfg["max_torque"])
+
+        torques = torques - self.cfg["max_torque"] * (motor_speed / self.cfg["max_motor_speed"])
+        self.get_robot().control_dofs_force(torques, self.motor_dofs) 
         
         self.scene.step()
 
@@ -220,8 +227,12 @@ class RockEnv:
         self.obs_stacked = torch.roll(self.obs_stacked, 1, dims=-1)     # shift obs 1 index later in hist dimension,
         self.obs_stacked[:,:,0] =  torch.cat(
             [
-                self.base_lin_vel,  # 3
+                # self.actions, # 1
+                self.base_euler / 60, # 3
+                # self.base_lin_vel * 1e3,  # 3
                 self.base_ang_vel,  # 3
+                self.get_robot().get_dofs_velocity(self.motor_dofs) / 50,  # 1
+                self.get_robot().get_dofs_position(self.motor_dofs) / 10,  # 1
             ],
             axis=-1
         )
@@ -255,7 +266,7 @@ class RockEnv:
         self.base_pos[envs_idx] = self.base_init_pos
         self.base_quat[envs_idx] = self.base_init_quat.reshape(1, -1)
         self.get_robot().set_pos(self.base_pos[envs_idx], zero_velocity=True, envs_idx=envs_idx)
-        self.get_robot().set_quat(self.base_quat[envs_idx], zero_velocity=True, envs_idx=envs_idx)
+        self.get_robot().set_quat(self.base_quat[envs_idx] + 0.05*torch.rand_like(self.base_quat[envs_idx]), zero_velocity=True, envs_idx=envs_idx)
         self.base_lin_vel[envs_idx] = 0
         self.base_ang_vel[envs_idx] = 0
         self.get_robot().zero_all_dofs_velocity(envs_idx)
@@ -274,6 +285,9 @@ class RockEnv:
             )
             self.episode_sums[key][envs_idx] = 0.0
 
+        self.obs_stacked[envs_idx, :, :] = 0
+
+
         # self._resample_commands(envs_idx)
 
     def reset(self):
@@ -281,8 +295,11 @@ class RockEnv:
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         return self.obs_stacked.flatten(1), None # rsl-rl expects 2 outputs, only first is used
 
-    def _reward_lin_vel(self):
-        return 0
+    def _reward_alive(self):
+        return 1
+    
+    def _reward_regularize(self):
+        return torch.exp(-4 * (self.actions.sum(-1) / 0.6)**2)
     
 
 if __name__ == "__main__":
@@ -294,10 +311,12 @@ if __name__ == "__main__":
     print("Starting simulation")
     env.cam.start_recording()
     for i in range(1000):
-        env.step(torch.zeros((1,1)))
+
+        
+        obs, _, rews, dones, infos = env.step(1*torch.ones((1,1), device=env.device))
 
         if i % 24 == 0:
-            print(env.base_pos, env.base_lin_vel)
+            print(obs)
             env.cam.render()
 
     env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test2.mp4", fps=30)
