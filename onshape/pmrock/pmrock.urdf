@@ -51,7 +51,7 @@
         <mesh filename="meshes/shell_com_1.stl"/>
       </geometry>
       <material name="shell_com_1-material">
-        <color rgba="0 0 0 1"/>
+        <color rgba="0 0 0 0.3"/>
       </material>
     </visual>
     <!-- <collision name="shell_com_1_collision">

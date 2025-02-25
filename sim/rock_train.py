@@ -31,7 +31,7 @@ train_cfg = {
     "algorithm": {
         "clip_param": 0.2,              # More flexibility in updates
         "desired_kl": 0.01,             # Keep for adaptive if retained
-        "entropy_coef": 0.02,           # Boost exploration
+        "entropy_coef": 0.01,           # Boost exploration
         "gamma": 0.999,                  # Longer horizon for smaller dt
         "lam": 0.99,                    # Better advantage estimation
         "learning_rate": 0.0003,        # Slower, stable learning

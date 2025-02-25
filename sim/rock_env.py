@@ -11,6 +11,9 @@ class RockEnv:
     SIM_DIR = os.path.dirname(os.path.abspath(__file__))
 
     env_cfg = {
+        # "urdf_path": "onshape/pmrock/pmrock.urdf",
+        "urdf_path": "onshape/balo/balo.urdf",
+
         "num_commands": 1,
         "num_actions": 1, # angle of pendulum
 
@@ -33,11 +36,11 @@ class RockEnv:
         "kd": 100,
 
         # termination
-        "termination_if_roll_greater_than": 60,  # degree
-        "termination_if_pitch_greater_than": 60,
+        "termination_if_roll_greater_than": 999,  # degree
+        "termination_if_pitch_greater_than": 999,
 
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.020],
+        "base_init_pos": [0.0, 0.0, 0.10],
         "base_init_quat": [1., 0., 0.07, 0.],
 
         "dt": 0.001,
@@ -103,7 +106,7 @@ class RockEnv:
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file=f'{RockEnv.SIM_DIR}/../onshape/pmrock/pmrock.urdf',
+                file=f'{RockEnv.SIM_DIR}/../{self.cfg["urdf_path"]}',
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
@@ -306,17 +309,21 @@ if __name__ == "__main__":
     gs.init(logging_level="warning")
 
     print("Building env")
-    env = RockEnv(num_envs=1, add_camera=True)
+    # env = RockEnv(num_envs=1, add_camera=True)
+    env = RockEnv(num_envs=1, show_viewer=True)
 
     print("Starting simulation")
-    env.cam.start_recording()
-    for i in range(1000):
+    # env.cam.start_recording()
+    # for i in range(500):
+    i=0
+    while True:
+        i+=1
 
         
         obs, _, rews, dones, infos = env.step(1*torch.ones((1,1), device=env.device))
 
         if i % 24 == 0:
             print(obs)
-            env.cam.render()
+            # env.cam.render()
 
-    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test2.mp4", fps=30)
+    # env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test2.mp4", fps=30)

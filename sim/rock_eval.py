@@ -72,6 +72,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "pmrock1_2025-02-20_10-09-19"
+    exp_name = "pmrock1_2025-02-20_10-16-39"
     
-    rock_eval(exp_name, checkpoint=50)
+    rock_eval(exp_name, checkpoint=200)
