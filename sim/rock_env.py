@@ -3,9 +3,11 @@ import math
 import genesis as gs
 import numpy as np
 import os
-from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
+from genesis.utils.geom import xyz_to_quat, quat_to_xyz, axis_angle_to_quat, transform_by_quat, inv_quat, transform_quat_by_quat
 from genesis.engine.solvers.rigid.rigid_solver_decomp import RigidSolver
 from genesis.engine.entities.rigid_entity import RigidEntity
+
+PI = torch.pi
 
 class RockEnv:
     SIM_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,14 +38,15 @@ class RockEnv:
         "kd": 100,
 
         # termination
-        "termination_if_roll_greater_than": 999,  # degree
-        "termination_if_pitch_greater_than": 999,
+        "termination_if_roll_greater_than": 45,  # degree
+        "termination_if_pitch_greater_than": 45,
 
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.10],
-        "base_init_quat": [1., 0., 0.07, 0.],
+        # "base_init_pos": [0.0, 0.0, 0.08],
+        "base_init_pos": [0.0, 0.0, 0.1],
+        "base_init_quat": [1., 0., 0., 0.],
 
-        "dt": 0.001,
+        "dt": 0.01,
         "substeps": 2,
         "episode_length_s": 3.0,
         "max_torque": 0.6,
@@ -74,7 +77,11 @@ class RockEnv:
 
         # create scene
         self.scene = gs.Scene(
-            sim_options=gs.options.SimOptions(dt=self.dt, substeps=2),
+            sim_options=gs.options.SimOptions(
+                dt=self.dt, 
+                substeps=2, 
+                gravity=(0,0,0),
+            ),
             rigid_options=gs.options.RigidOptions(
                 dt=self.dt,
                 constraint_solver=gs.constraint_solver.Newton,
@@ -115,7 +122,8 @@ class RockEnv:
         if add_camera:
             self.cam = self.scene.add_camera(
                 res=(640, 480),
-                pos=(0.5, 0.5, 0.5),
+                pos=(0.5, 0.5, 0.5), #diag
+                # pos=(0.0, 0.0, 0.5), #on top
                 lookat=(0, 0, 0.1),
                 fov=30,
                 GUI=False,
@@ -177,12 +185,13 @@ class RockEnv:
     def step(self, actions):
         self.actions = actions
 
+        # self.get_robot().set_dofs_velocity(10*torch.ones((1,1)), self.motor_dofs)
         motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
 
         torques = 100*torch.clip(self.actions, -self.cfg["max_torque"], self.cfg["max_torque"])
 
         torques = torques - self.cfg["max_torque"] * (motor_speed / self.cfg["max_motor_speed"])
-        self.get_robot().control_dofs_force(torques, self.motor_dofs) 
+        # self.get_robot().control_dofs_force(torques, self.motor_dofs) 
         
         self.scene.step()
 
@@ -212,6 +221,13 @@ class RockEnv:
         self.reset_buf = self.episode_length_buf > self.max_episode_length
         self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.cfg["termination_if_pitch_greater_than"]
         self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.cfg["termination_if_roll_greater_than"]
+
+        #get unit vector corresponding to base_euler
+        self.base_euler_unit = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
+        self.base_euler_unit[:, 0] = torch.sin(self.base_euler[:, 1]) * torch.cos(self.base_euler[:, 0])
+        self.base_euler_unit[:, 1] = torch.sin(self.base_euler[:, 1]) * torch.sin(self.base_euler[:, 0])
+        self.base_euler_unit[:, 2] = torch.cos(self.base_euler[:, 1])
+
 
         time_out_idx = (self.episode_length_buf > self.max_episode_length).nonzero(as_tuple=False).flatten()
         self.extras["time_outs"] = torch.zeros_like(self.reset_buf, device=self.device, dtype=gs.tc_float)
@@ -254,25 +270,37 @@ class RockEnv:
     def reset_idx(self, envs_idx):
         if len(envs_idx) == 0:
             return
+        
+        lean_axis_yaw = 2*PI * torch.rand(1, device=self.device)
+        lean_axis = torch.tensor([torch.sin(lean_axis_yaw), torch.cos(lean_axis_yaw), 0], device=self.device)
+        lean_angle = torch.deg2rad(torch.tensor(6, device=self.device))
+        
+        # reset base
+        self.base_pos[envs_idx] = self.base_init_pos
+        # self.base_quat[envs_idx] = self.base_init_quat
+        self.base_quat[envs_idx] = axis_angle_to_quat(lean_angle, lean_axis)
+        self.get_robot().set_pos(self.base_pos[envs_idx], zero_velocity=True, envs_idx=envs_idx)
+        self.get_robot().set_quat(self.base_quat[envs_idx], zero_velocity=True, envs_idx=envs_idx)
+        # self.get_robot().set_quat(self.base_quat[envs_idx] + 0.05*torch.rand_like(self.base_quat[envs_idx]), zero_velocity=True, envs_idx=envs_idx)
+        # self.base_lin_vel[envs_idx] = 0
+        # self.base_ang_vel[envs_idx] = 0
+        # [x, y, z, rx, ry, rz]
+        self.get_robot().set_dofs_velocity(10*torch.ones((1,1)), dofs_idx_local=[5], envs_idx=envs_idx)
 
         # reset dofs
-        self.dof_pos[envs_idx] = self.default_dof_pos
-        self.dof_vel[envs_idx] = 0.0
+        self.dof_pos[envs_idx] = -lean_axis_yaw - PI/2
+        self.dof_vel[envs_idx] = 0
         self.get_robot().set_dofs_position(
             position=self.dof_pos[envs_idx],
             dofs_idx_local=self.motor_dofs,
-            zero_velocity=True,
+            zero_velocity=False,
             envs_idx=envs_idx,
         )
-
-        # reset base
-        self.base_pos[envs_idx] = self.base_init_pos
-        self.base_quat[envs_idx] = self.base_init_quat.reshape(1, -1)
-        self.get_robot().set_pos(self.base_pos[envs_idx], zero_velocity=True, envs_idx=envs_idx)
-        self.get_robot().set_quat(self.base_quat[envs_idx] + 0.05*torch.rand_like(self.base_quat[envs_idx]), zero_velocity=True, envs_idx=envs_idx)
-        self.base_lin_vel[envs_idx] = 0
-        self.base_ang_vel[envs_idx] = 0
-        self.get_robot().zero_all_dofs_velocity(envs_idx)
+        self.get_robot().set_dofs_velocity(
+            velocity=self.dof_vel[envs_idx],
+            dofs_idx_local=self.motor_dofs,
+            envs_idx=envs_idx,
+        )        
 
         # reset buffers
         self.last_actions[envs_idx] = 0.0
@@ -301,6 +329,10 @@ class RockEnv:
     def _reward_alive(self):
         return 1
     
+    def _reward_tracking(self):
+        #tracking is cmd[0]
+        self.get_robot().get_vel()
+    
     def _reward_regularize(self):
         return torch.exp(-4 * (self.actions.sum(-1) / 0.6)**2)
     
@@ -309,21 +341,26 @@ if __name__ == "__main__":
     gs.init(logging_level="warning")
 
     print("Building env")
-    # env = RockEnv(num_envs=1, add_camera=True)
-    env = RockEnv(num_envs=1, show_viewer=True)
+    env = RockEnv(num_envs=1, add_camera=True)
+    # env = RockEnv(num_envs=1, show_viewer=True)
 
     print("Starting simulation")
-    # env.cam.start_recording()
-    # for i in range(500):
-    i=0
-    while True:
-        i+=1
+    env.reset()
+    env.cam.start_recording()
+    for i in range(500):
+    # i=0
+    # while True:
+    #     i+=1
 
         
-        obs, _, rews, dones, infos = env.step(1*torch.ones((1,1), device=env.device))
+        obs, _, rews, dones, infos = env.step(0*torch.ones((1,1), device=env.device))
 
-        if i % 24 == 0:
-            print(obs)
-            # env.cam.render()
+        if i % 10 == 0:
+            # print(obs)
+            print(i)
+        env.cam.render()
 
-    # env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test2.mp4", fps=30)
+        # if i % 100 == 0:
+        #     env.reset()
+
+    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test2.mp4", fps=30)

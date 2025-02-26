@@ -17,8 +17,8 @@ import json
 
 
 def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_record=True, do_log=False):
-    # gs.init(logging_level='warning')
-    gs.init(logging_level='info')
+    gs.init(logging_level='warning')
+    # gs.init(logging_level='info')
     torch.no_grad()
 
     log_dir = f"{RockEnv.SIM_DIR}/runs/{run_name}"
@@ -64,6 +64,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
         if do_record:
             if i % 10 == 0:
+                print(i)
                 env.cam.render()
 
     env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=30)
@@ -72,6 +73,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "pmrock1_2025-02-20_10-16-39"
+    exp_name = "balo1_2025-02-25_12-25-07"
     
-    rock_eval(exp_name, checkpoint=200)
+    rock_eval(exp_name, checkpoint=100)

@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<robot name="balo">
+  <link name="pendulum_1">
+    <visual name="pendulum_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+      <material name="pendulum_1-material">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="pendulum_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.025374834"/>
+      <inertia ixx="1.1946991e-06" iyy="9.7512826e-07" izz="8.4976843e-07" ixy="-2.7082465e-08" ixz="-3.3853081e-08" iyz="-2.7857741e-07"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="shell_1">
+    <visual name="shell_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell_1.stl"/>
+      </geometry>
+      <material name="shell_1-material">
+        <color rgba="0 1 0 0.2"/>
+      </material>
+    </visual>
+    <collision name="shell_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.088972445"/>
+      <inertia ixx="0.00016871499" iyy="0.00016409992" izz="0.00014338628" ixy="-9.9018315e-10" ixz="-2.1273976e-09" iyz="-4.8280764e-06"/>
+      <origin xyz="-2.0417737e-06 -1.2557234e-07 6.5662558e-07" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <joint name="Revolute_1" type="revolute">
+    <origin xyz="0.0027313234 0.022476093 0.028095116" rpy="-2.2455373 0 0"/>
+    <parent link="pendulum_1"/>
+    <child link="shell_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+</robot>

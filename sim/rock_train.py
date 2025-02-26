@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-exp_name = f"pmrock1_{timestamp}"
+exp_name = f"balo1_{timestamp}"
 learning_iterations = 1000
 seed = 1
 num_envs = 4096
@@ -103,6 +103,6 @@ if __name__ == "__main__":
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    runner.load('/media/nmbl/Windows/Projects/Rock/rockmech/sim/runs/pmrock1_2025-02-20_09-47-56/models/model_250.pt')
+    # runner.load('/media/nmbl/Windows/Projects/Rock/rockmech/sim/runs/pmrock1_2025-02-20_09-47-56/models/model_250.pt')
 
     runner.learn(learning_iterations)
