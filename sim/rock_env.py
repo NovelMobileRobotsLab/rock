@@ -46,13 +46,13 @@ class RockEnv:
         "base_init_pos": [0.0, 0.0, 0.1],
         "base_init_quat": [1., 0., 0., 0.],
 
-        "dt": 0.01,
+        "dt": 0.001,
         "substeps": 2,
         "episode_length_s": 3.0,
         "max_torque": 0.6,
         "max_motor_speed": 276, # 2640 rpm 
 
-        "friction": 1.0,
+        "friction": 0.01,
     }
     
     def __init__(self, num_envs:int, env_cfg=None, show_viewer=False, add_camera=False, viewer_timescale=0.5, device="cuda"):
@@ -185,15 +185,48 @@ class RockEnv:
     def step(self, actions):
         self.actions = actions
 
-        # self.get_robot().set_dofs_velocity(10*torch.ones((1,1)), self.motor_dofs)
         motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
 
         torques = 100*torch.clip(self.actions, -self.cfg["max_torque"], self.cfg["max_torque"])
 
         torques = torques - self.cfg["max_torque"] * (motor_speed / self.cfg["max_motor_speed"])
         # self.get_robot().control_dofs_force(torques, self.motor_dofs) 
+        # self.get_robot().control_dofs_velocity([[10]], self.motor_dofs)
+
+        self.get_robot().set_dofs_velocity(5*torch.ones((1,1)), self.motor_dofs)
         
-        self.scene.step()
+
+        for i in range(10):
+            self.scene.step()
+
+            omega = 5.
+
+            self.base_quat[:] = self.get_robot().get_quat()
+            # self.base_euler = quat_to_xyz(
+            #     transform_quat_by_quat(torch.ones_like(self.base_quat) * self.inv_base_init_quat, self.base_quat)
+            # )
+            vert_spin = torch.tensor([[0.0, 0.0, omega]], device=self.device)
+            # joystick_angvel = vert_spin - 1/0.8550503583*transform_by_quat(vert_spin, self.base_quat[:])
+
+            # n x dn/dt
+            theta = torch.deg2rad(torch.tensor(10, device=self.device))
+            n_vec = transform_by_quat(vert_spin, self.base_quat[:])
+            phi = torch.atan2(n_vec[:,1], n_vec[:,0])
+            # print(phi)
+            joystick_angvel = torch.tensor([
+                -omega*torch.sin(theta)*torch.cos(theta)*torch.cos(phi),
+                -omega*torch.sin(theta)*torch.cos(theta)*torch.sin(phi),
+                omega*(torch.sin(theta))**2,
+            ], device=self.device).reshape(1,3)
+
+
+
+            self.get_robot().set_dofs_velocity(joystick_angvel, dofs_idx_local=[3,4,5])
+
+            radius_vec = 0.0776 * torch.nn.functional.normalize(transform_by_quat(vert_spin, self.base_quat[:]), p=2.0, dim = 1)
+            joystick_linvel = torch.cross(vert_spin, radius_vec) # v x r
+            # print(joystick_linvel)
+            self.get_robot().set_dofs_velocity(joystick_linvel, dofs_idx_local=[0,1,2])
 
         # update buffers
         self.episode_length_buf += 1
@@ -208,6 +241,8 @@ class RockEnv:
         self.projected_gravity = transform_by_quat(self.global_gravity, inv_base_quat)
         self.dof_pos[:] = self.get_robot().get_dofs_position(self.motor_dofs)
         self.dof_vel[:] = self.get_robot().get_dofs_velocity(self.motor_dofs)
+
+        
 
         # resample commands
         # envs_idx = (
@@ -273,7 +308,8 @@ class RockEnv:
         
         lean_axis_yaw = 2*PI * torch.rand(1, device=self.device)
         lean_axis = torch.tensor([torch.sin(lean_axis_yaw), torch.cos(lean_axis_yaw), 0], device=self.device)
-        lean_angle = torch.deg2rad(torch.tensor(6, device=self.device))
+        lean_angle = torch.deg2rad(torch.tensor(10, device=self.device))
+        # lean_angle = torch.deg2rad(torch.tensor(90, device=self.device))
         
         # reset base
         self.base_pos[envs_idx] = self.base_init_pos
@@ -284,12 +320,19 @@ class RockEnv:
         # self.get_robot().set_quat(self.base_quat[envs_idx] + 0.05*torch.rand_like(self.base_quat[envs_idx]), zero_velocity=True, envs_idx=envs_idx)
         # self.base_lin_vel[envs_idx] = 0
         # self.base_ang_vel[envs_idx] = 0
-        # [x, y, z, rx, ry, rz]
-        self.get_robot().set_dofs_velocity(10*torch.ones((1,1)), dofs_idx_local=[5], envs_idx=envs_idx)
+
+        # [x, y, z, rx, ry, rz] #global frame
+
+        spin = 5.
+        joystick_angvel = torch.tensor([[0.0, 0.0, spin]], device=self.device)
+        joystick_angvel = joystick_angvel - transform_by_quat(joystick_angvel, self.base_quat[envs_idx])
+        print(joystick_angvel)
+
+        self.get_robot().set_dofs_velocity(joystick_angvel, dofs_idx_local=[3,4,5], envs_idx=envs_idx)
 
         # reset dofs
         self.dof_pos[envs_idx] = -lean_axis_yaw - PI/2
-        self.dof_vel[envs_idx] = 0
+        self.dof_vel[envs_idx] = spin
         self.get_robot().set_dofs_position(
             position=self.dof_pos[envs_idx],
             dofs_idx_local=self.motor_dofs,
