@@ -38,12 +38,13 @@ class RockEnv:
         "kd": 100,
 
         # termination
-        "termination_if_roll_greater_than": 45,  # degree
-        "termination_if_pitch_greater_than": 45,
+        # "termination_if_roll_greater_than": 45,  # degree
+        # "termination_if_pitch_greater_than": 45,
+        "termination_if_angle_greater_than": 45, #degree
 
         # base pose
-        # "base_init_pos": [0.0, 0.0, 0.08],
-        "base_init_pos": [0.0, 0.0, 0.1],
+        "base_init_pos": [0.0, 0.0, 0.08],
+        # "base_init_pos": [0.0, 0.0, 0.1],
         "base_init_quat": [1., 0., 0., 0.],
 
         "dt": 0.001,
@@ -52,7 +53,14 @@ class RockEnv:
         "max_torque": 0.6,
         "max_motor_speed": 276, # 2640 rpm 
 
-        "friction": 0.01,
+        "initial_motor_speed": 15,
+        "initial_shell_speed": 10,
+        # "initial_motor_speed": 0,
+        # "initial_shell_speed": 0,
+        "lean_angle": 5,
+
+        "friction": 2,
+        "gravity": [0, 0, -1],
     }
     
     def __init__(self, num_envs:int, env_cfg=None, show_viewer=False, add_camera=False, viewer_timescale=0.5, device="cuda"):
@@ -80,7 +88,7 @@ class RockEnv:
             sim_options=gs.options.SimOptions(
                 dt=self.dt, 
                 substeps=2, 
-                gravity=(0,0,0),
+                gravity=self.cfg["gravity"],
             ),
             rigid_options=gs.options.RigidOptions(
                 dt=self.dt,
@@ -185,48 +193,22 @@ class RockEnv:
     def step(self, actions):
         self.actions = actions
 
-        motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
+        # motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
 
-        torques = 100*torch.clip(self.actions, -self.cfg["max_torque"], self.cfg["max_torque"])
+        # torques = 100*torch.clip(self.actions, -self.cfg["max_torque"], self.cfg["max_torque"])
 
-        torques = torques - self.cfg["max_torque"] * (motor_speed / self.cfg["max_motor_speed"])
+        # torques = torques - self.cfg["max_torque"] * (motor_speed / self.cfg["max_motor_speed"])
         # self.get_robot().control_dofs_force(torques, self.motor_dofs) 
         # self.get_robot().control_dofs_velocity([[10]], self.motor_dofs)
 
-        self.get_robot().set_dofs_velocity(5*torch.ones((1,1)), self.motor_dofs)
+        target_speed = torch.clip(self.actions + self.cfg["initial_motor_speed"], -self.cfg["max_motor_speed"], self.cfg["max_motor_speed"])
+        self.get_robot().control_dofs_velocity(target_speed, self.motor_dofs)
+
+        # self.get_robot().control_dofs_velocity(self.cfg["initial_motor_speed"]*torch.ones((1,1)), self.motor_dofs)
         
 
         for i in range(10):
             self.scene.step()
-
-            omega = 5.
-
-            self.base_quat[:] = self.get_robot().get_quat()
-            # self.base_euler = quat_to_xyz(
-            #     transform_quat_by_quat(torch.ones_like(self.base_quat) * self.inv_base_init_quat, self.base_quat)
-            # )
-            vert_spin = torch.tensor([[0.0, 0.0, omega]], device=self.device)
-            # joystick_angvel = vert_spin - 1/0.8550503583*transform_by_quat(vert_spin, self.base_quat[:])
-
-            # n x dn/dt
-            theta = torch.deg2rad(torch.tensor(10, device=self.device))
-            n_vec = transform_by_quat(vert_spin, self.base_quat[:])
-            phi = torch.atan2(n_vec[:,1], n_vec[:,0])
-            # print(phi)
-            joystick_angvel = torch.tensor([
-                -omega*torch.sin(theta)*torch.cos(theta)*torch.cos(phi),
-                -omega*torch.sin(theta)*torch.cos(theta)*torch.sin(phi),
-                omega*(torch.sin(theta))**2,
-            ], device=self.device).reshape(1,3)
-
-
-
-            self.get_robot().set_dofs_velocity(joystick_angvel, dofs_idx_local=[3,4,5])
-
-            radius_vec = 0.0776 * torch.nn.functional.normalize(transform_by_quat(vert_spin, self.base_quat[:]), p=2.0, dim = 1)
-            joystick_linvel = torch.cross(vert_spin, radius_vec) # v x r
-            # print(joystick_linvel)
-            self.get_robot().set_dofs_velocity(joystick_linvel, dofs_idx_local=[0,1,2])
 
         # update buffers
         self.episode_length_buf += 1
@@ -254,8 +236,10 @@ class RockEnv:
 
         # check termination and reset
         self.reset_buf = self.episode_length_buf > self.max_episode_length
-        self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.cfg["termination_if_pitch_greater_than"]
-        self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.cfg["termination_if_roll_greater_than"]
+        # self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.cfg["termination_if_pitch_greater_than"]
+        # self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.cfg["termination_if_roll_greater_than"]
+        #dot product of projected gravity and [0,0,-1] = cos of angle
+        self.reset_buf |= torch.abs(self.projected_gravity[:, 2]) < np.cos(np.deg2rad(self.cfg["termination_if_angle_greater_than"]))
 
         #get unit vector corresponding to base_euler
         self.base_euler_unit = torch.zeros((self.num_envs, 3), device=self.device, dtype=gs.tc_float)
@@ -308,8 +292,7 @@ class RockEnv:
         
         lean_axis_yaw = 2*PI * torch.rand(1, device=self.device)
         lean_axis = torch.tensor([torch.sin(lean_axis_yaw), torch.cos(lean_axis_yaw), 0], device=self.device)
-        lean_angle = torch.deg2rad(torch.tensor(10, device=self.device))
-        # lean_angle = torch.deg2rad(torch.tensor(90, device=self.device))
+        lean_angle = torch.deg2rad(torch.tensor(self.cfg["lean_angle"], device=self.device))
         
         # reset base
         self.base_pos[envs_idx] = self.base_init_pos
@@ -322,17 +305,30 @@ class RockEnv:
         # self.base_ang_vel[envs_idx] = 0
 
         # [x, y, z, rx, ry, rz] #global frame
+        # n x dn/dt
+            # theta = torch.deg2rad(torch.tensor(10, device=self.device))
+            # n_vec = transform_by_quat(vert_spin, self.base_quat[:])
+            # phi = torch.atan2(n_vec[:,1], n_vec[:,0])
+            # # print(phi)
+            # joystick_angvel = torch.tensor([
+            #     -omega*torch.sin(theta)*torch.cos(theta)*torch.cos(phi),
+            #     -omega*torch.sin(theta)*torch.cos(theta)*torch.sin(phi),
+            #     omega*(torch.sin(theta))**2,
+            # ], device=self.device).reshape(1,3)
+        spin = self.cfg["initial_shell_speed"]
 
-        spin = 5.
-        joystick_angvel = torch.tensor([[0.0, 0.0, spin]], device=self.device)
-        joystick_angvel = joystick_angvel - transform_by_quat(joystick_angvel, self.base_quat[envs_idx])
-        print(joystick_angvel)
-
+        #vert_spin is a tensor with shape (envs_idx, 3)
+        #copy it to all envs
+        vert_spin = torch.tensor([[0.0, 0.0, spin]], device=self.device).expand((len(envs_idx), 3))
+        joystick_angvel = vert_spin - transform_by_quat(vert_spin, self.base_quat[envs_idx])
+        radius_vec = 0.0776 * torch.nn.functional.normalize(transform_by_quat(vert_spin, self.base_quat[envs_idx]), p=2.0, dim = 1)
+        joystick_linvel = torch.cross(vert_spin, radius_vec) # v x r
+        self.get_robot().set_dofs_velocity(joystick_linvel, dofs_idx_local=[0,1,2], envs_idx=envs_idx)
         self.get_robot().set_dofs_velocity(joystick_angvel, dofs_idx_local=[3,4,5], envs_idx=envs_idx)
 
         # reset dofs
         self.dof_pos[envs_idx] = -lean_axis_yaw - PI/2
-        self.dof_vel[envs_idx] = spin
+        self.dof_vel[envs_idx] = self.cfg["initial_motor_speed"]
         self.get_robot().set_dofs_position(
             position=self.dof_pos[envs_idx],
             dofs_idx_local=self.motor_dofs,
@@ -372,9 +368,9 @@ class RockEnv:
     def _reward_alive(self):
         return 1
     
-    def _reward_tracking(self):
-        #tracking is cmd[0]
-        self.get_robot().get_vel()
+    # def _reward_tracking(self):
+    #     #tracking is cmd[0]
+    #     self.get_robot().get_vel()
     
     def _reward_regularize(self):
         return torch.exp(-4 * (self.actions.sum(-1) / 0.6)**2)
@@ -384,7 +380,7 @@ if __name__ == "__main__":
     gs.init(logging_level="warning")
 
     print("Building env")
-    env = RockEnv(num_envs=1, add_camera=True)
+    env = RockEnv(num_envs=2, add_camera=True)
     # env = RockEnv(num_envs=1, show_viewer=True)
 
     print("Starting simulation")
@@ -396,7 +392,7 @@ if __name__ == "__main__":
     #     i+=1
 
         
-        obs, _, rews, dones, infos = env.step(0*torch.ones((1,1), device=env.device))
+        obs, _, rews, dones, infos = env.step(0*torch.ones((env.num_envs,1), device=env.device))
 
         if i % 10 == 0:
             # print(obs)
