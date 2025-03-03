@@ -9,9 +9,9 @@ from datetime import datetime
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 exp_name = f"balo1_{timestamp}"
-learning_iterations = 1000
+learning_iterations = 10000
 seed = 1
-num_envs = 4096
+num_envs = 8192
 
 train_cfg = {
     # "algorithm": {
@@ -31,14 +31,14 @@ train_cfg = {
     "algorithm": {
         "clip_param": 0.2,              # More flexibility in updates
         "desired_kl": 0.01,             # Keep for adaptive if retained
-        "entropy_coef": 0.01,           # Boost exploration
+        "entropy_coef": 0.1,           # Boost exploration
         "gamma": 0.999,                  # Longer horizon for smaller dt
         "lam": 0.99,                    # Better advantage estimation
-        "learning_rate": 0.0003,        # Slower, stable learning
+        "learning_rate": 0.001,        # Slower, stable learning
         "max_grad_norm": 1.0,           # Unchanged, stability cap
         "num_learning_epochs": 5,       # Unchanged, sufficient passes
         "num_mini_batches": 2,          # Larger updates for stability
-        "schedule": "adaptive",         # Test "fixed" if issues persist
+        "schedule": "fixed",         # Test "fixed" if issues persist
         "use_clipped_value_loss": True, # Unchanged, helps stability
         "value_loss_coef": 0.1          # Balance value and policy
     },
@@ -102,7 +102,10 @@ if __name__ == "__main__":
     gs.init(logging_level="warning")
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
+    last_run = 'balo1_2025-03-01_18-26-20'
+    ckpt = 7400
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    # runner.load('/media/nmbl/Windows/Projects/Rock/rockmech/sim/runs/pmrock1_2025-02-20_09-47-56/models/model_250.pt')
+    runner.load(f'/media/nmbl/Windows/Projects/Rock/rockmech/sim/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    runner.current_learning_iteration = ckpt
 
     runner.learn(learning_iterations)

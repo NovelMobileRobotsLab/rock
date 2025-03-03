@@ -1,10 +1,21 @@
+''' 
+Simulation works 
+Gradients do not work because intermediate results of global fields are not saved for the backward pass.
+'''
+
+
 import taichi as ti
 import numpy as np
 import time
 import matplotlib.pyplot as plt
 
+import os
+this_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Initialize Taichi with Metal backend
 ti.init(arch=ti.gpu)
+# ti.init(arch=ti.cpu, cpu_max_num_threads=1)
+
 
 # Parameters
 n_systems = 1000
@@ -36,35 +47,29 @@ def initialize():
         ti.sync()
 
 
-@ti.func
-def compute_dynamics(i: ti.i32, t: ti.i32):
-    M[i] = ti.Matrix.identity(ti.f32, n_dof) * m[i]
-    C[i] = ti.Matrix.zero(ti.f32, n_dof, n_dof)
-    G[i] = ti.Vector([0.0, 0.0, 0.0, 9.81 * m[i]])
-    tau[i] = ti.Vector([1.0, 1.0, 1.0, 1.0])
-    ti.sync()
-    M_inv = M[i].inverse()
-    ti.sync()
-    q_ddot[i] = M_inv @ (tau[i] - C[i] @ q_dot[i] - G[i])
-    ti.sync()
 
 @ti.kernel
 def simulate():
     # ti.loop_config(parallelize=1)  #Ensures sequential execution
-    for t in range(steps):
-        for i in range(n_systems):
-            compute_dynamics(i, t)
-            ti.sync()
+    ti.loop_config(serialize=True)
+    for i in range(n_systems):
+        ti.loop_config(serialize=True)
+        for t in range(steps):
+
+            M[i] = ti.Matrix.identity(ti.f32, n_dof) * m[i]
+            C[i] = ti.Matrix.zero(ti.f32, n_dof, n_dof)
+            G[i] = ti.Vector([0.0, 0.0, 0.0, 0.0])
+            tau[i] = -q[i]
+
+            M_inv = M[i].inverse()
+            q_ddot[i] = M_inv @ (tau[i] - C[i] @ q_dot[i] - G[i])
+
             new_q = q[i] + q_dot[i] * dt
-            ti.sync()
             new_q_dot = q_dot[i] + q_ddot[i] * dt
             
             q_dot[i] = new_q_dot
-            ti.sync()
             q[i] = new_q
-            ti.sync()
             q_history[t, i] += q[i]  # Ensure correct storage
-            ti.sync()
             ti.atomic_add(loss[None], q[i].norm_sqr())
 
 # Main simulation with gradients
@@ -99,6 +104,7 @@ q_history_np = q_history.to_numpy()
 
 
 print("Final positions (first 5 systems):", q_np[:5])
+# print("Final positions hist (first 5 systems):", q_history_np[-1,:5])
 print("Gradient w.r.t. q (first 5 systems):", q_grad_np[:5])  # Debugging
 print("Gradient w.r.t. initial q_dot (first 5 systems):", q_dot_grad_np[:5])
 print("Gradient w.r.t. m (first 5 systems):", m_grad_np[:5])
@@ -107,16 +113,15 @@ print("Loss:", loss[None])
 
 # print(q_history_np[:,0,0])
 
-# Create plots for the first 5 systems
+# Create plots for the first 10 systems
 plt.figure(figsize=(10, 8))
 for dof in range(n_dof):
     plt.subplot(2, 2, dof + 1)
-    for system in range(5):
-        plt.plot(np.arange(steps) * dt, q_history_np[:, system, dof], 
-                label=f'System {system}', marker='.')
+    for system in range(10):
+        plt.plot(np.arange(steps) * dt, q_history_np[:, system, dof], label=f'System {system}')
     plt.title(f'DOF {dof} Trajectory')
     plt.xlabel('Time (s)')
     plt.ylabel('Position')
     plt.legend()
 plt.tight_layout()
-plt.show()
+plt.savefig(f'{this_dir}/trajectory2.png')
