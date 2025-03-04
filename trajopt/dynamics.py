@@ -9,6 +9,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 # ti.init(arch=ti.cpu, cpu_max_num_threads=1)
 ti.init(arch=ti.cuda)
 
+PI = np.pi
 M_PI_4 = np.pi / 4.0
 M_SQRT2 = np.sqrt(2.0)
 
@@ -343,15 +344,17 @@ loss = ti.field(dtype=ti.f32, shape=(), needs_grad=True)
 # tau.fill(0)
 dt.fill(0.001)
 
+# tau.fill(-0.05)
+
 @ti.kernel
 def init():
     for i in range(n_systems):
-        q[0,i] = ti.Vector([0,1,0,0])
+        q[0,i] = ti.Vector([0,PI,0,0])
         q_dot[0,i] = ti.Vector([0,0,0,0])
-        print(i)
 
+        for t in range(steps):
+            tau[t,i] = sin(5 * (t/steps + 0.25) * 2*np.pi)
 
-# loss.fill(0)
 
 @ti.kernel
 def simulate_step(t: ti.i32):
@@ -363,8 +366,10 @@ def simulate_step(t: ti.i32):
         M_inv = M.inverse()
 
         tau_all = ti.Vector.zero(ti.f32, 4)
-        tau_all[3] = 0
+        tau_all[3] = tau[t, i]
         # print(q[t,i])
+
+        
 
 
         q_ddot = M_inv @ (tau_all - C @ q_dot[t,i] - G)
@@ -393,6 +398,7 @@ if __name__ == "__main__":
     print(f"Time: {time.time() - start_time:0.4f}s")
 
     q_np = q.to_numpy()
+    q_dot_np = q_dot.to_numpy()
     q_grad_np = q.grad.to_numpy()
     print(f"dloss/dq:\n{q_grad_np[0]}")
 
@@ -400,14 +406,28 @@ if __name__ == "__main__":
 
     plt.figure(figsize=(10, 8))
     for dof in range(4):
-        plt.subplot(2, 2, dof + 1)
+        ax = plt.subplot(2, 2, dof + 1)
         for system in range(2):
-            plt.plot(np.arange(steps) * dt.to_numpy()[system], q_np[:, system, dof], label=f'System {system}')
+            ax.plot(np.arange(steps) * dt.to_numpy()[system], q_np[:, system, dof], label=f'System {system}')
+        if dof == 3:  # For DOF 3 plot
+            ax2 = plt.gca().twinx()  # Create second y-axis
+            for system in range(2):
+                ax2.plot(np.arange(steps) * dt.to_numpy()[system], 
+                        tau.to_numpy()[:,system], '--', 
+                        label=f'Torque {system}')
+            ax2.set_ylabel('Torque')
+            # Add second legend for torque plots
+            lines1, labels1 = plt.gca().get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            # ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper right')
         plt.title(f'DOF {dof} Trajectory')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Position')
-        plt.legend()
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Position')
+        ax.legend()
     plt.tight_layout()
     plt.savefig(f'{this_dir}/dynamics.png')
-    # print("Final position (first):", q_np[-1, :])
+
+    os.makedirs(f"{this_dir}/results", exist_ok=True)
+    np.save(f'{this_dir}/results/q.npy', q_np)
+    np.save(f'{this_dir}/results/q_dot.npy', q_dot_np)
 
