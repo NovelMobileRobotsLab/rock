@@ -338,61 +338,45 @@ tau = ti.field(dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)
 dt = ti.field(dtype=ti.f32, shape=n_systems, needs_grad=True)
 loss = ti.field(dtype=ti.f32, shape=(), needs_grad=True)
 
-# q.fill(0)
-# q_dot.fill(0)
-# tau.fill(0)
 dt.fill(0.001)
-
-@ti.kernel
-def init():
-    for i in range(n_systems):
-        q[0,i] = ti.Vector([0,1,0,0])
-        q_dot[0,i] = ti.Vector([0,0,0,0])
-        print(i)
-
-
-# loss.fill(0)
+q.grad.fill(0)
+q_dot.grad.fill(0)
 
 @ti.kernel
 def simulate_step(t: ti.i32):
-    # ti.loop_config(parallelize=1)  #Ensures sequential execution
     for i in range(n_systems):
     
         M, C, G = get_MCG(q[t,i], q_dot[t,i])
 
         M_inv = M.inverse()
 
-        tau_all = ti.Vector.zero(ti.f32, 4)
-        tau_all[3] = 0
+        # tau_all = ti.Matrix.zero(ti.f32, 1, 4)
+        # tau_all[0,3] = 
         # print(q[t,i])
 
 
-        q_ddot = M_inv @ (tau_all - C @ q_dot[t,i] - G)
-        q_dot[t+1,i] = q_dot[t,i] + q_ddot * dt[i]
-        q[t+1,i] = q[t,i] + q_dot[t,i] * dt[i]
+        q_ddot = M_inv @ (tau[t,i] - C @ q_dot[t,i] - G)
+        # print(q_ddot)
 
-@ti.kernel
-def compute_loss():
-    loss[None] += q[steps-1,0].norm_sqr() #just the first system
+        q_dot[t+1,i] += q_dot[t,i] + q_ddot * dt[i]
+        q[t+1,i] += q[t,i] + q_dot[t,i] * dt[i]
 
 def forward():
-    for t in range(steps-1):
+    for t in range(steps):
         simulate_step(t)
-    compute_loss()
-    
+        # print(q[t,0], q)
+    loss[None] = q[steps-1,0].norm_sqr()
 
 
 if __name__ == "__main__":
-    init()
-
     start_time = time.time()
     with ti.ad.Tape(loss):
         forward() 
-
     print(f"Loss: {loss[None]}")
     print(f"Time: {time.time() - start_time:0.4f}s")
 
     q_np = q.to_numpy()
+
     q_grad_np = q.grad.to_numpy()
     print(f"dloss/dq:\n{q_grad_np[0]}")
 
@@ -410,4 +394,4 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(f'{this_dir}/dynamics.png')
     # print("Final position (first):", q_np[-1, :])
-
+    
