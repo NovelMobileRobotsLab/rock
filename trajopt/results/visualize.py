@@ -214,6 +214,8 @@ def main():
         glVertex3f(0.0, 0.0, 0.0)
         glVertex3f(0.0, 0.0, 0.2)
         glEnd()
+
+        
         
         # Reset material color
         glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, (0.5, 0.5, 1.0, 1.0))

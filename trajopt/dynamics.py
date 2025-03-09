@@ -349,13 +349,13 @@ dt.fill(0.001)
 @ti.kernel
 def init():
     for i in range(n_systems):
-        q[0,i] = ti.Vector([0,PI,0,0])
+        q[0,i] = ti.Vector([0,0,0,0])
         q_dot[0,i] = ti.Vector([0,0,0,0])
 
         for t in range(steps):
             tau[t,i] = sin(5 * (t/steps + 0.25) * 2*np.pi)
 
-
+fall_threshold = np.deg2rad(45) #compiled into the kernel
 @ti.kernel
 def simulate_step(t: ti.i32):
     # ti.loop_config(parallelize=1)  #Ensures sequential execution
@@ -370,11 +370,20 @@ def simulate_step(t: ti.i32):
         # print(q[t,i])
 
         
+        # pitch = 
+        # roll = 
+        # is_fallen = 
+        # ti.select(cos(q[t,i][1])*cos(q[t,i][2]) < cos(fall_threshold))
 
 
         q_ddot = M_inv @ (tau_all - C @ q_dot[t,i] - G)
         q_dot[t+1,i] = q_dot[t,i] + q_ddot * dt[i]
-        q[t+1,i] = q[t,i] + q_dot[t,i] * dt[i]
+        # q[t+1,i] = q[t,i] + q_dot[t,i] * dt[i]
+        q[t+1,i] = q[t,i]
+
+        if(cos(q[t,i][1])*cos(q[t,i][2]) > cos(fall_threshold)):
+            q[t+1,i] += q_dot[t,i] * dt[i]
+
 
 @ti.kernel
 def compute_loss():
