@@ -14,7 +14,7 @@ class RockEnv:
 
     env_cfg = {
         # "urdf_path": "onshape/pmrock/pmrock.urdf",
-        "urdf_path": "onshape/balo/balo.urdf",
+        "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
 
         "num_commands": 1,
         "num_actions": 1, # angle of pendulum
