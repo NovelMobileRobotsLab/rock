@@ -332,33 +332,31 @@ def print_matrix(M):
         print('')
 
 steps = 1000
-n_systems = 2
+n_systems = 256
 q = ti.Vector.field(4, dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)  # Add needs_grad for debugging
 q_dot = ti.Vector.field(4, dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)
 tau = ti.field(dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)
 dt = ti.field(dtype=ti.f32, shape=n_systems, needs_grad=True)
 loss = ti.field(dtype=ti.f32, shape=(), needs_grad=True)
 
-# q.fill(0)
-# q_dot.fill(0)
-# tau.fill(0)
-dt.fill(0.001)
 
-# tau.fill(-0.05)
+
+
 
 @ti.kernel
-def init():
+def clear_states():
     for i in range(n_systems):
         q[0,i] = ti.Vector([0,0,0,0])
         q_dot[0,i] = ti.Vector([0,0,0,0])
 
+        dt[i] = ti.random()/100 + 0.001
+
         for t in range(steps):
-            tau[t,i] = sin(5 * (t/steps + 0.25) * 2*np.pi)
+            tau[t,i] = ti.random()
 
 fall_threshold = np.deg2rad(45) #compiled into the kernel
 @ti.kernel
 def simulate_step(t: ti.i32):
-    # ti.loop_config(parallelize=1)  #Ensures sequential execution
     for i in range(n_systems):
     
         M, C, G = get_MCG(q[t,i], q_dot[t,i])
@@ -369,25 +367,26 @@ def simulate_step(t: ti.i32):
         tau_all[3] = tau[t, i]
         # print(q[t,i])
 
-        
-        # pitch = 
-        # roll = 
-        # is_fallen = 
-        # ti.select(cos(q[t,i][1])*cos(q[t,i][2]) < cos(fall_threshold))
-
-
+    
         q_ddot = M_inv @ (tau_all - C @ q_dot[t,i] - G)
-        q_dot[t+1,i] = q_dot[t,i] + q_ddot * dt[i]
+
+
+        # q_dot[t+1,i] = q_dot[t,i] + q_ddot * dt[i]
+        q_dot[t+1,i] = ti.select(cos(q[t,i][1])*cos(q[t,i][2]) > cos(fall_threshold), q_dot[t,i] + q_ddot * dt[i], q_dot[t,i])
+        
         # q[t+1,i] = q[t,i] + q_dot[t,i] * dt[i]
-        q[t+1,i] = q[t,i]
+        # q[t+1,i] = q[t,i]
+        q[t+1,i] = ti.select(cos(q[t,i][1])*cos(q[t,i][2]) > cos(fall_threshold), q[t,i] + q_dot[t,i] * dt[i], q[t,i])
+        # if(cos(q[t,i][1])*cos(q[t,i][2]) > cos(fall_threshold)):
+        #     q[t+1,i] += q_dot[t,i] * dt[i]
 
-        if(cos(q[t,i][1])*cos(q[t,i][2]) > cos(fall_threshold)):
-            q[t+1,i] += q_dot[t,i] * dt[i]
-
-
+penalty_q = 1
+penalty_q_dot = 1
 @ti.kernel
 def compute_loss():
-    loss[None] += q[steps-1,0].norm_sqr() #just the first system
+    for i in range(n_systems):
+        loss[None] += 1/n_systems * penalty_q * (q[steps-1,i] - q[0,i]).norm_sqr()
+        loss[None] += 1/n_systems * penalty_q_dot * (q_dot[steps-1,i] - q_dot[0,i]).norm_sqr()
 
 def forward():
     for t in range(steps-1):
@@ -397,21 +396,53 @@ def forward():
 
 
 if __name__ == "__main__":
-    init()
 
-    start_time = time.time()
-    with ti.ad.Tape(loss):
-        forward() 
+    num_iterations = 20
+    learning_rate = 0.001
+    loss_history = []
 
-    print(f"Loss: {loss[None]}")
-    print(f"Time: {time.time() - start_time:0.4f}s")
+    clear_states()
 
-    q_np = q.to_numpy()
-    q_dot_np = q_dot.to_numpy()
-    q_grad_np = q.grad.to_numpy()
-    print(f"dloss/dq:\n{q_grad_np[0]}")
+    for iteration in range(num_iterations):
+        start_time = time.time()
 
-    print(f"d(loss)/d(dt):\n{dt.grad}")
+
+        with ti.ad.Tape(loss):
+            forward() 
+        loss_history.append(loss[None])
+
+
+        q_np = q.to_numpy()
+        q_dot_np = q_dot.to_numpy()
+        q_grad_np = q.grad.to_numpy()
+        q_dot_grad_np = q_dot.grad.to_numpy()
+
+
+        print(f"Loss: {loss[None]}")
+        # print(f"dloss/dq0:\n{q_grad_np[0]}")
+        # print(f"dloss/dq_dot0:\n{q_dot_grad_np[0]}")
+        # print(f"d(loss)/d(dt):\n{dt.grad}")
+
+        clear_states()
+
+        for i in range(n_systems):
+            for j in range(4): #for each dof
+                q[0, i][j] += -q.grad[0,i][j] * learning_rate*0.001
+                q_dot[0, i][j] += -q_dot.grad[0,i][j] * learning_rate*0.01
+            # dt[i] += -dt.grad[i] * learning_rate
+            for t in range(steps):
+                tau[t,i] += -tau.grad[t,i] * learning_rate
+
+
+        print(f"Time: {time.time() - start_time:0.4f}s")
+    print(f"Loss history: {loss_history}")
+
+    #plot loss history
+    plt.figure(figsize=(10, 8))
+    plt.plot(loss_history)
+    plt.savefig(f"{this_dir}/loss_history.png")
+
+
 
     plt.figure(figsize=(10, 8))
     for dof in range(4):
