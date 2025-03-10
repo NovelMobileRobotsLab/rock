@@ -14,7 +14,7 @@ class RockEnv:
 
     env_cfg = {
         # "urdf_path": "onshape/pmrock/pmrock.urdf",
-        "urdf_path": "onshape/balo/balo.urdf",
+        "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
 
         "num_commands": 1,
         "num_actions": 1, # angle of pendulum
@@ -40,12 +40,12 @@ class RockEnv:
         # termination
         # "termination_if_roll_greater_than": 45,  # degree
         # "termination_if_pitch_greater_than": 45,
-        "termination_if_angle_greater_than": 45, #degree
+        "termination_if_angle_greater_than": 90, #degree
 
         # base pose
         "base_init_pos": [0.0, 0.0, 0.08],
         # "base_init_pos": [0.0, 0.0, 0.1],
-        "base_init_quat": [1., 0., 0., 0.],
+        "base_init_quat": [ 0, 0.7071068, 0, 0.7071068 ],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
 
         "dt": 0.001,
         "substeps": 2,
@@ -60,7 +60,7 @@ class RockEnv:
         "lean_angle": 5,
 
         "friction": 2,
-        "gravity": [0, 0, -1],
+        "gravity": [0, 0, -9.81],#[0, 0, -1], normal gravity conditions
     }
     
     def __init__(self, num_envs:int, env_cfg=None, show_viewer=False, add_camera=False, viewer_timescale=0.5, device="cuda"):
@@ -155,7 +155,7 @@ class RockEnv:
         self.reward_functions, self.episode_sums = dict(), dict()
         for name in self.reward_scales.keys():
             self.reward_scales[name] *= self.dt
-            self.reward_functions[name] = getattr(self, "_reward_" + name)
+            self.reward_functions[name] = getattr(self, "_reward_" + name) # finds all the functions starting with _reward
             self.episode_sums[name] = torch.zeros((self.num_envs,), device=self.device, dtype=gs.tc_float)
 
         # initialize buffers
@@ -368,6 +368,32 @@ class RockEnv:
     def _reward_alive(self):
         return 1
     
+    # linear velocity reward function referenced from genesis locomotion example !!!!!!
+    # def _reward_tracking_lin_vel(self):
+    #     # Tracking of linear velocity along x and y axis ... seems to look at linear displacement
+    #     lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+    #     return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"]) 
+
+    def _reward_tracking_lin_vel_x(self): # not entirely sure if this will make it go in a straight line along x axis or not
+        # provide positive reinforcement for linear velocity along x axis
+        lin_vel_error = torch.sum(torch.square(self.commands[:, 0] - self.base_lin_vel[:, 0]), dim=1)
+        #reward would be based on how closely the actual linear velocity direction aligns with the desired direction
+        return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
+    
+    def _reward_tracking_lin_vel_y(self): 
+        # provide positive reinforcement for linear velocity along y axis
+        lin_vel_error = torch.sum(torch.square(self.commands[:, 1] - self.base_lin_vel[:, 1]), dim=1)
+        return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
+    
+    def _reward_action_rate(self):
+        # Penalize changes in actions, encourages going towards the same action that provides the best reward
+        return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
+    
+    def _reward_tracking_ang_vel(self):
+        # Tracking of angular velocity commands (yaw)
+        ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
+        return torch.exp(-ang_vel_error / self.reward_cfg["tracking_sigma"])
+
     # def _reward_tracking(self):
     #     #tracking is cmd[0]
     #     self.get_robot().get_vel()

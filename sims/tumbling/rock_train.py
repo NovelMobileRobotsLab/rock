@@ -8,10 +8,10 @@ from datetime import datetime
 
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-exp_name = f"balo1_{timestamp}"
+exp_name = f"balo_tumble_{timestamp}"
 learning_iterations = 1000
 seed = 1
-num_envs = 8192
+num_envs = 4096
 
 train_cfg = {
     # "algorithm": {

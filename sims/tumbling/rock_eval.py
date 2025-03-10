@@ -57,7 +57,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     if do_record:
         env.cam.start_recording()
 
-    for i in range(1000):
+    for i in range(2000): # doubled number of steps from 1000 to 2000
         actions = policy(obs)
         # actions = torch.ones((1,1))
         obs, _, rews, dones, infos = env.step(actions)
@@ -67,12 +67,12 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 print(i)
             env.cam.render()
 
-    env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=30)
+    env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=30) 
             
 
 
 if __name__ == "__main__":
 
-    exp_name = "balo1_2025-03-01_18-26-20"
+    exp_name = "balo_tumble_2025-03-09_18-42-18"
     
-    rock_eval(exp_name, checkpoint=7250)
+    rock_eval(exp_name, checkpoint=1000)
