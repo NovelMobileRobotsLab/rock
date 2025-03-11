@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import os
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
-# ti.init(arch=ti.cpu, cpu_max_num_threads=1)
-ti.init(arch=ti.cuda)
+ti.init(arch=ti.cpu)
+# ti.init(arch=ti.cuda)
 
 PI = np.pi
 M_PI_4 = np.pi / 4.0
@@ -331,13 +331,14 @@ def print_matrix(M):
             print(M[i,j], end=" ")
         print('')
 
-steps = 1000
-n_systems = 256
+steps = 100
+n_systems = 4096
 q = ti.Vector.field(4, dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)  # Add needs_grad for debugging
 q_dot = ti.Vector.field(4, dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)
 tau = ti.field(dtype=ti.f32, shape=(steps, n_systems), needs_grad=True)
 dt = ti.field(dtype=ti.f32, shape=n_systems, needs_grad=True)
 loss = ti.field(dtype=ti.f32, shape=(), needs_grad=True)
+loss_all = ti.field(dtype=ti.f32, shape=(n_systems), needs_grad=False)
 
 
 
@@ -385,8 +386,9 @@ penalty_q_dot = 1
 @ti.kernel
 def compute_loss():
     for i in range(n_systems):
-        loss[None] += 1/n_systems * penalty_q * (q[steps-1,i] - q[0,i]).norm_sqr()
-        loss[None] += 1/n_systems * penalty_q_dot * (q_dot[steps-1,i] - q_dot[0,i]).norm_sqr()
+        individual_loss = penalty_q * (q[steps-1,i] - q[0,i]).norm_sqr() + penalty_q_dot * (q_dot[steps-1,i] - q_dot[0,i]).norm_sqr()
+        loss[None] += 1/n_systems * individual_loss
+        loss_all[i] = individual_loss
 
 def forward():
     for t in range(steps-1):
@@ -403,6 +405,8 @@ if __name__ == "__main__":
 
     clear_states()
 
+    loss_all_hist = []
+
     for iteration in range(num_iterations):
         start_time = time.time()
 
@@ -417,25 +421,39 @@ if __name__ == "__main__":
         q_grad_np = q.grad.to_numpy()
         q_dot_grad_np = q_dot.grad.to_numpy()
 
+        loss_all_np = loss_all.to_numpy()
+        loss_all_hist.append(loss_all_np)
+
 
         print(f"Loss: {loss[None]}")
         # print(f"dloss/dq0:\n{q_grad_np[0]}")
         # print(f"dloss/dq_dot0:\n{q_dot_grad_np[0]}")
         # print(f"d(loss)/d(dt):\n{dt.grad}")
 
-        clear_states()
 
         for i in range(n_systems):
             for j in range(4): #for each dof
-                q[0, i][j] += -q.grad[0,i][j] * learning_rate*0.001
-                q_dot[0, i][j] += -q_dot.grad[0,i][j] * learning_rate*0.01
+                q[0, i][j] += -q.grad[0,i][j] * learning_rate*0.1
+                q_dot[0, i][j] += -q_dot.grad[0,i][j] * learning_rate*0.1
+                
+                if j < 3:
+                    q[0,i][j] = np.clip(q[0,i][j], -np.deg2rad(30), np.deg2rad(30))
+                    
             # dt[i] += -dt.grad[i] * learning_rate
             for t in range(steps):
                 tau[t,i] += -tau.grad[t,i] * learning_rate
 
+        plt.figure(figsize=(10, 8))
+        #make a histogram using loss_all
+        plt.hist(loss_all.to_numpy(), bins=10)
+        plt.savefig(f"{this_dir}/loss_all{iteration}.png")
+
 
         print(f"Time: {time.time() - start_time:0.4f}s")
     print(f"Loss history: {loss_history}")
+
+    loss_all_hist = np.array(loss_all_hist)
+    np.save(f"{this_dir}/loss_all_hist.npy", loss_all_hist)
 
     #plot loss history
     plt.figure(figsize=(10, 8))

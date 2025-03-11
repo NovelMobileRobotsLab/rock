@@ -14,7 +14,7 @@ class RockEnv:
 
     env_cfg = {
         # "urdf_path": "onshape/pmrock/pmrock.urdf",
-        "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
+        "urdf_path": "../onshape/balo2/balo_2.urdf", # fixed file path for new sim folders
 
         "num_commands": 1,
         "num_actions": 1, # angle of pendulum
@@ -418,7 +418,7 @@ if __name__ == "__main__":
     #     i+=1
 
         
-        obs, _, rews, dones, infos = env.step(0*torch.ones((env.num_envs,1), device=env.device))
+        obs, _, rews, dones, infos = env.step(100*torch.ones((env.num_envs,1), device=env.device))
 
         if i % 10 == 0:
             # print(obs)
@@ -428,4 +428,4 @@ if __name__ == "__main__":
         # if i % 100 == 0:
         #     env.reset()
 
-    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test2.mp4", fps=30)
+    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test3.mp4", fps=30)

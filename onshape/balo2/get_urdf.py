@@ -4,6 +4,7 @@ from onshape_robotics_toolkit.models.document import Document
 from onshape_robotics_toolkit.log import LOGGER
 from onshape_robotics_toolkit.graph import create_graph
 from onshape_robotics_toolkit.robot import get_robot
+from onshape_robotics_toolkit.models.variable import Variable
 from onshape_robotics_toolkit.parse import (
     get_instances,
     get_mates_and_relations,
@@ -24,10 +25,10 @@ if os.getcwd() != onshape_dir:
     exit()
 
 # CHANGE THESE FOR NEW FILES
-save_name = "balo"
-url = "https://cad.onshape.com/documents/c330ce83f7b3527be6ffef2b/w/e336b9cb14c1d649c69b79d9/e/098de0e11adee2121bb1d6b5"
+save_name = "balo_2"
+url = "https://cad.onshape.com/documents/c330ce83f7b3527be6ffef2b/w/e336b9cb14c1d649c69b79d9/e/0176597dae9d2e49ffc8f5fe"
 var_studio_name = "Variable Studio 1"
-main_assembly_name = "Assembly 1"
+main_assembly_name = "Balo_2"
 
 # Set log directory
 LOGGER._log_path = "logs"
@@ -47,9 +48,16 @@ print(f"Elements:\n {elements.keys()}")
 # Change the values of the variables if needed
 variables = client.get_variables(doc.did, doc.wid, elements[var_studio_name].id)
 print(f"Variables:\n {variables.keys()}")
-# variables["pendulum_height"].expression = f"{300} mm"
-# variables["shell_com_height"].expression = f"{288} mm"
-client.set_variables(doc.did, doc.wid, elements[var_studio_name].id, variables)
+
+variables["x2"].expression = f"{-70} mm"
+variables['testvar'] = Variable(type="LENGTH", name="testvar", value="012 mm")
+
+for key in variables.keys():
+    if variables[key].expression == "":
+        variables[key].expression = f"{0} mm"
+    print(f"{key}: {variables[key]}")
+resp = client.set_variables(doc.did, doc.wid, elements[var_studio_name].id, variables)
+print(f"Response:\n {resp}")
 
 # Retrieve the assembly you want to convert to URDF
 assembly = client.get_assembly(doc.did, doc.wtype, doc.wid, elements[main_assembly_name].id)

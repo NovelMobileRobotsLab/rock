@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-exp_name = f"balo_tumble_{timestamp}"
+exp_name = f"balo2_tumble_{timestamp}"
 learning_iterations = 1000
 seed = 1
 num_envs = 4096
@@ -92,6 +92,10 @@ if __name__ == "__main__":
     with open(f"{run_dir}/train_cfg.json", "w") as f:
         json.dump(train_cfg, f, indent=4)
 
+    # copy the urdf at env_cfg into run_dir
+    os.system(f"cp {RockEnv.SIM_DIR}/../{env_cfg['urdf_path']} {run_dir}")
+    print(f"cp {RockEnv.SIM_DIR}/../{env_cfg['urdf_path']} {run_dir}")
+    # exit()
     
 
     # train_cfg['runner']['resume'] = True

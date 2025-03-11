@@ -34,7 +34,8 @@ client = osa.Client(
 )
 
 doc = Document.from_url(
-    url="https://cad.onshape.com/documents/3736a1cdc282a6f7da659790/w/cf6263306d7b194ff766ac0e/e/7a15b0ad0e57de34b0dc5384"
+    # url="https://cad.onshape.com/documents/3736a1cdc282a6f7da659790/w/cf6263306d7b194ff766ac0e/e/7a15b0ad0e57de34b0dc5384"
+    url="https://cad.onshape.com/documents/c330ce83f7b3527be6ffef2b/w/e336b9cb14c1d649c69b79d9/e/ea7c43767de3a84da4a50af0"
 )
 
 # Retrieve the Variable Studio element
@@ -43,10 +44,12 @@ elements = client.get_elements(doc.did, doc.wtype, doc.wid)
 # print(f"Elements:\n {elements}")
 
 # Save the updated variables back to the Variable Studio
-# variables = client.get_variables(doc.did, doc.wid, elements["Variable Studio 1"].id)
-# variables["pendulum_height"].expression = f"{300} mm"
+variables = client.get_variables(doc.did, doc.wid, elements["Variable Studio 1"].id)
+print(f"Variables:\n {variables.keys()}")
+
+variables["x3"].expression = f"{51} mm"
 # variables["shell_com_height"].expression = f"{288} mm"
-# client.set_variables(doc.did, doc.wid, elements["Variable Studio 1"].id, variables)
+client.set_variables(doc.did, doc.wid, elements["Variable Studio 1"].id, variables)
 
 
 # Retrieve the assembly
@@ -61,9 +64,9 @@ mates, relations = get_mates_and_relations(assembly, subassemblies, rigid_subass
 
 
 
-# Create and save the assembly graph
-save_name = "balo"
-graph, root_node = create_graph(occurrences=occurrences, instances=instances, parts=parts, mates=mates)
-robot = get_robot(assembly, graph, root_node, parts, mates, relations, client, save_name)
-robot.show_graph(f"{save_name}.png")
-robot.save(f"{save_name}.urdf")
+# # Create and save the assembly graph
+# save_name = "balo_test"
+# graph, root_node = create_graph(occurrences=occurrences, instances=instances, parts=parts, mates=mates)
+# robot = get_robot(assembly, graph, root_node, parts, mates, relations, client, save_name)
+# robot.show_graph(f"{save_name}.png")
+# robot.save(f"{save_name}.urdf")
