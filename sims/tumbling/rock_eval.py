@@ -73,6 +73,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "balo_tumble_2025-03-09_18-42-18"
+    exp_name = "balo2_tumble_2025-03-11_17-09-03"
     
     rock_eval(exp_name, checkpoint=1000)

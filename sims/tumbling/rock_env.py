@@ -14,18 +14,20 @@ class RockEnv:
 
     env_cfg = {
         # "urdf_path": "onshape/pmrock/pmrock.urdf",
-        "urdf_path": "../onshape/balo2/balo_2.urdf", # fixed file path for new sim folders
+        "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
 
-        "num_commands": 1,
+        "num_commands": 3,
         "num_actions": 1, # angle of pendulum
 
-        "num_obs_per_step": 8,
+        "num_obs_per_step": 14,
         "num_obs_hist": 3,  # number of previous observations to include
 
         "reward_scales": {
-            "alive": 1.0,
             "regularize": 0.1,
+            "tracking_lin_vel": 1.0,
         },
+
+        "tracking_sigma": 0.1,
 
         # joint names, initial position
         "dofs": {  # [rad]
@@ -45,7 +47,7 @@ class RockEnv:
         # base pose
         "base_init_pos": [0.0, 0.0, 0.08],
         # "base_init_pos": [0.0, 0.0, 0.1],
-        "base_init_quat": [ 0, 0.7071068, 0, 0.7071068 ],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
+        "base_init_quat": [0.7071068 ,0, 0.7071068, 0],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
 
         "dt": 0.001,
         "substeps": 2,
@@ -130,7 +132,15 @@ class RockEnv:
         if add_camera:
             self.cam = self.scene.add_camera(
                 res=(640, 480),
-                pos=(0.5, 0.5, 0.5), #diag
+                pos=(2, 2, 2), #diag
+                # pos=(0.0, 0.0, 0.5), #on top
+                lookat=(0, 0, 0.1),
+                fov=30,
+                GUI=False,
+            )
+            self.cam_top = self.scene.add_camera(
+                res=(1920,1080),
+                pos=(2, 2, 2), #diag
                 # pos=(0.0, 0.0, 0.5), #on top
                 lookat=(0, 0, 0.1),
                 fov=30,
@@ -267,10 +277,11 @@ class RockEnv:
             [
                 # self.actions, # 1
                 self.base_euler / 60, # 3
-                # self.base_lin_vel * 1e3,  # 3
+                self.base_lin_vel * 1e3,  # 3
                 self.base_ang_vel,  # 3
                 self.get_robot().get_dofs_velocity(self.motor_dofs) / 50,  # 1
                 self.get_robot().get_dofs_position(self.motor_dofs) / 10,  # 1
+                self.commands,  # 3
             ],
             axis=-1
         )
@@ -287,6 +298,7 @@ class RockEnv:
         return self.obs_stacked.flatten(1)
 
     def reset_idx(self, envs_idx):
+        self.commands[envs_idx,0] = 1 
         if len(envs_idx) == 0:
             return
         
@@ -296,8 +308,8 @@ class RockEnv:
         
         # reset base
         self.base_pos[envs_idx] = self.base_init_pos
-        # self.base_quat[envs_idx] = self.base_init_quat
-        self.base_quat[envs_idx] = axis_angle_to_quat(lean_angle, lean_axis)
+        self.base_quat[envs_idx] = self.base_init_quat
+        # self.base_quat[envs_idx] = axis_angle_to_quat(lean_angle, lean_axis)
         self.get_robot().set_pos(self.base_pos[envs_idx], zero_velocity=True, envs_idx=envs_idx)
         self.get_robot().set_quat(self.base_quat[envs_idx], zero_velocity=True, envs_idx=envs_idx)
         # self.get_robot().set_quat(self.base_quat[envs_idx] + 0.05*torch.rand_like(self.base_quat[envs_idx]), zero_velocity=True, envs_idx=envs_idx)
@@ -365,25 +377,25 @@ class RockEnv:
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         return self.obs_stacked.flatten(1), None # rsl-rl expects 2 outputs, only first is used
 
-    def _reward_alive(self):
-        return 1
+    # def _reward_alive(self):
+    #     return 1
     
     # linear velocity reward function referenced from genesis locomotion example !!!!!!
-    # def _reward_tracking_lin_vel(self):
-    #     # Tracking of linear velocity along x and y axis ... seems to look at linear displacement
-    #     lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
-    #     return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"]) 
+    def _reward_tracking_lin_vel(self):
+        # Tracking of linear velocity along x and y axis ... seems to look at linear displacement
+        lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
+        return torch.exp(-lin_vel_error / self.cfg["tracking_sigma"]) 
 
-    def _reward_tracking_lin_vel_x(self): # not entirely sure if this will make it go in a straight line along x axis or not
-        # provide positive reinforcement for linear velocity along x axis
-        lin_vel_error = torch.sum(torch.square(self.commands[:, 0] - self.base_lin_vel[:, 0]), dim=1)
-        #reward would be based on how closely the actual linear velocity direction aligns with the desired direction
-        return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
+    # def _reward_tracking_lin_vel_x(self): # not entirely sure if this will make it go in a straight line along x axis or not
+    #     # provide positive reinforcement for linear velocity along x axis
+    #     lin_vel_error = torch.sum(torch.square(self.commands[:, 0] - self.base_lin_vel[:, 0]), dim=1)
+    #     #reward would be based on how closely the actual linear velocity direction aligns with the desired direction
+    #     return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
     
-    def _reward_tracking_lin_vel_y(self): 
-        # provide positive reinforcement for linear velocity along y axis
-        lin_vel_error = torch.sum(torch.square(self.commands[:, 1] - self.base_lin_vel[:, 1]), dim=1)
-        return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
+    # def _reward_tracking_lin_vel_y(self): 
+    #     # provide positive reinforcement for linear velocity along y axis
+    #     lin_vel_error = torch.sum(torch.square(self.commands[:, 1] - self.base_lin_vel[:, 1]), dim=1)
+    #     return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
     
     def _reward_action_rate(self):
         # Penalize changes in actions, encourages going towards the same action that provides the best reward
@@ -392,7 +404,7 @@ class RockEnv:
     def _reward_tracking_ang_vel(self):
         # Tracking of angular velocity commands (yaw)
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        return torch.exp(-ang_vel_error / self.reward_cfg["tracking_sigma"])
+        return torch.exp(-ang_vel_error / self.cfg["tracking_sigma"])
 
     # def _reward_tracking(self):
     #     #tracking is cmd[0]
@@ -412,6 +424,7 @@ if __name__ == "__main__":
     print("Starting simulation")
     env.reset()
     env.cam.start_recording()
+    env.cam_top.start_recording()
     for i in range(500):
     # i=0
     # while True:
@@ -423,9 +436,19 @@ if __name__ == "__main__":
         if i % 10 == 0:
             # print(obs)
             print(i)
+
+        robot_pos = env.get_robot().get_pos()[0].flatten()
+        offset_x = 0.0  # centered horizontally
+        offset_y = -1.0 
+        offset_z = 0.2  
+        camera_pos = (float(robot_pos[0] + offset_x), float(robot_pos[1] + offset_y), float(robot_pos[2] + offset_z))
+        # print(camera_pos, tuple(float(x) for x in robot_pos))
+        env.cam.set_pose(pos=camera_pos, lookat=tuple(float(x) for x in robot_pos))
         env.cam.render()
+        env.cam_top.render()
 
         # if i % 100 == 0:
         #     env.reset()
 
-    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/test3.mp4", fps=30)
+    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/testfollow.mp4", fps=30)
+    env.cam_top.stop_recording(f"{RockEnv.SIM_DIR}/testfollow_top.mp4", fps=30)
