@@ -60,3 +60,5 @@
     resolver_name.AddSvdf();                                  \
     resolver_name.AddTanh();                                  \
     resolver_name.AddUnpack();
+
+// end of file

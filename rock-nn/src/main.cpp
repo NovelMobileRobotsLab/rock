@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include <mnist_model.h>
+// #include <mnist_model.h>
+#include <sin_model.h>
 #include <all_ops_resolver.h>
 
 
@@ -18,9 +19,6 @@ TfLiteTensor *input = nullptr;
 const int kTensorArenaSize = 35 * 1024;
 static uint8_t tensor_arena[kTensorArenaSize];
 
-
-// put function declarations here:
-int myFunction(int, int);
 
 void printModelInfo(){
   input = interpreter->input(0);
@@ -46,72 +44,69 @@ void printModelInfo(){
 
 
 void setup() {
-    // put your setup code here, to run once:
     Serial.begin(115200);
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
     delay(2000);
-    digitalWrite(LED_BUILTIN, LOW);
-    ESP_LOGI(TAG, "Setup");
-
-    
+    digitalWrite(LED_BUILTIN, LOW);    
 
     static tflite::MicroErrorReporter micro_error_reporter;
     error_reporter = &micro_error_reporter;
-    // Create Model
-    model = tflite::GetModel(mnist_model);
-    // Verify Version of Tf Micro matches Model's verson
+    // model = tflite::GetModel(mnist_model);
+    model = tflite::GetModel(sin_model);
     if (model->version() != TFLITE_SCHEMA_VERSION){
         ESP_LOGE(TAG, "Model provided is schema version %d not equal to supported version %d.", model->version(), TFLITE_SCHEMA_VERSION);
         return;
     }
     CREATE_ALL_OPS_RESOLVER(op_resolver)
-    // Build an interpreter to run the model with.
+
     static tflite::MicroInterpreter static_interpreter(model, op_resolver, tensor_arena, kTensorArenaSize);
     interpreter = &static_interpreter;
 
     // Allocate memory from the tensor_arena for the model's tensors.
     TfLiteStatus allocate_status = interpreter->AllocateTensors();
-    if (allocate_status != kTfLiteOk)
-    {
+    if (allocate_status != kTfLiteOk){
         ESP_LOGE(TAG, "AllocateTensors() failed");
         return;
     }
     printModelInfo();
 }
 
+float input_scale = 0.02462252601981163;
+int input_zero_pt = -1;
+
+float output_scale = 0.00801820121705532;
+int output_zero_pt = 3;
+
 void loop() {
-    // put your main code here, to run repeatedly:
-    int result = myFunction(7, 3);
-    Serial.println(result);
     digitalWrite(LED_BUILTIN, HIGH);
     delay(200);
     digitalWrite(LED_BUILTIN, LOW);
     delay(100);
 
-    int start = millis();
-    ESP_LOGI(TAG, "Invoke");
+    //generate 2 random floats between 0 and 1
+    float x = PI * random(-2048, 2048) / 2048.0;
+    float y = PI * random(-2048, 2048) / 2048.0;
 
-    if (kTfLiteOk != interpreter->Invoke()) // Any error i have in invoke tend to just crash the whole system so i dont usually see this message
-    {
-        ESP_LOGE(TAG, "Invoke failed!");
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Invoke success");
-        ESP_LOGI(TAG, "Time taken: %d milliseconds", millis() - start);
-    }
+    TfLiteTensor *input = interpreter->input(0);
+    input->data.int8[0] = int8_t(constrain(round(x / input_scale + input_zero_pt), -128, 127));
+    input->data.int8[1] = int8_t(constrain(round(y / input_scale + input_zero_pt), -128, 127));
 
-    TfLiteTensor *output = interpreter->output(0);
-
-    for (uint i = 0; i < 10; i++){
-        ESP_LOGI(TAG, "num:%d output:%d", i, output->data.int8[i]);
+    long start = micros();
+    if (interpreter->Invoke() == kTfLiteOk){
+        Serial.printf("Invoke in: %d microseconds\n", micros() - start);
+    }else{
+        Serial.printf("Invoke failed!\n");
+        return;
     }
 
+    int8_t output_int = interpreter->output(0)->data.int8[0];
+    float output_float = (output_int - output_zero_pt) * output_scale;
+
+    Serial.printf("input_float: %f\n", x);
+    Serial.printf("input_int: %d\n", input->data.int8[0]);
+    Serial.printf("output_int: %d\n", output_int);
+    Serial.printf("output_float: %f\n", output_float);
+    Serial.printf("error: %f\n", output_float - sin(x*y));
+    Serial.print("\t\n");
 }
-
-// put function definitions here:
-int myFunction(int x, int y) {
-    return x + y;
-}
-
