@@ -1,6 +1,8 @@
 #include <Arduino.h>
 // #include <mnist_model.h>
-#include <sin_model.h>
+// #include <sin_model.h>
+// #include <sin_model_512.h>
+#include <piecewise_model_128.h>
 #include <all_ops_resolver.h>
 
 
@@ -53,7 +55,9 @@ void setup() {
     static tflite::MicroErrorReporter micro_error_reporter;
     error_reporter = &micro_error_reporter;
     // model = tflite::GetModel(mnist_model);
-    model = tflite::GetModel(sin_model);
+    // model = tflite::GetModel(sin_model);
+    // model = tflite::GetModel(sin_model_512);
+    model = tflite::GetModel(piecewise_model_128);
     if (model->version() != TFLITE_SCHEMA_VERSION){
         ESP_LOGE(TAG, "Model provided is schema version %d not equal to supported version %d.", model->version(), TFLITE_SCHEMA_VERSION);
         return;
@@ -72,11 +76,11 @@ void setup() {
     printModelInfo();
 }
 
-float input_scale = 0.02462252601981163;
-int input_zero_pt = -1;
+float input_scale = 0.007843103259801865;
+int input_zero_pt = 0;
 
-float output_scale = 0.00801820121705532;
-int output_zero_pt = 3;
+float output_scale = 0.03959125280380249;
+int output_zero_pt = -3;
 
 void loop() {
     digitalWrite(LED_BUILTIN, HIGH);
@@ -84,13 +88,20 @@ void loop() {
     digitalWrite(LED_BUILTIN, LOW);
     delay(100);
 
-    //generate 2 random floats between 0 and 1
-    float x = PI * random(-2048, 2048) / 2048.0;
-    float y = PI * random(-2048, 2048) / 2048.0;
+    // //generate 2 random floats between 0 and 1
+    // float x = random(-2048, 2048) / 2048.0;
+    // float y = random(-2048, 2048) / 2048.0;
+
+    //generate 42 random floats between 0 and 1
+    float inputs[42];
+    for (int i = 0; i < 42; i++){
+        inputs[i] = random(-2048, 2048) / 2048.0;
+    }
 
     TfLiteTensor *input = interpreter->input(0);
-    input->data.int8[0] = int8_t(constrain(round(x / input_scale + input_zero_pt), -128, 127));
-    input->data.int8[1] = int8_t(constrain(round(y / input_scale + input_zero_pt), -128, 127));
+    for (int i = 0; i < 42; i++){
+        input->data.int8[i] = int8_t(constrain(round(inputs[i] / input_scale + input_zero_pt), -128, 127));
+    }
 
     long start = micros();
     if (interpreter->Invoke() == kTfLiteOk){
@@ -103,10 +114,13 @@ void loop() {
     int8_t output_int = interpreter->output(0)->data.int8[0];
     float output_float = (output_int - output_zero_pt) * output_scale;
 
-    Serial.printf("input_float: %f\n", x);
-    Serial.printf("input_int: %d\n", input->data.int8[0]);
+    Serial.print("Input: [");
+    for (int i = 0; i < 42; i++){
+        Serial.printf("%f, ", inputs[i]);
+    }
+    Serial.printf("]\n");
+
     Serial.printf("output_int: %d\n", output_int);
     Serial.printf("output_float: %f\n", output_float);
-    Serial.printf("error: %f\n", output_float - sin(x*y));
     Serial.print("\t\n");
 }
