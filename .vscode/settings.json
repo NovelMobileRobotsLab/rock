@@ -1,0 +1,8 @@
+{
+    "python.analysis.extraPaths": [
+        "./.venv/src/rsl-rl",
+        "./.venv/src/genesis-world",
+    ],
+    "python.defaultInterpreterPath": "./.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+}
