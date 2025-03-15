@@ -1,0 +1,81 @@
+<?xml version="1.0" ?>
+<robot name="balo_2">
+  <link name="shell1_1">
+    <visual name="shell1_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell1_1.stl"/>
+      </geometry>
+      <material name="shell1_1-material">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision name="shell1_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell1_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.050105989"/>
+      <inertia ixx="3.8937921e-05" iyy="7.3358209e-05" izz="4.8688197e-05" ixy="-2.6030729e-06" ixz="5.6154084e-06" iyz="1.7295925e-06"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="pendulum_1">
+    <visual name="pendulum_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+      <material name="pendulum_1-material">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision name="pendulum_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.0090925339"/>
+      <inertia ixx="6.5245276e-08" iyy="7.3991477e-07" izz="7.6727449e-07" ixy="0" ixz="0" iyz="0"/>
+      <origin xyz="0.019850709 7.1659421e-20 -6.4528717e-20" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="shell2_1">
+    <visual name="shell2_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell2_1.stl"/>
+      </geometry>
+      <material name="shell2_1-material">
+        <color rgba="1 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision name="shell2_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell2_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.050096582"/>
+      <inertia ixx="3.8933271e-05" iyy="4.8676618e-05" izz="7.3344711e-05" ixy="-5.6133375e-06" ixz="2.5992044e-06" iyz="1.728273e-06"/>
+      <origin xyz="-0.0036787691 -0.002322736 -0.020717988" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <joint name="Revolute_1" type="revolute">
+    <origin xyz="0.0036819023 -0.020716657 -0.0023213953" rpy="-1.5707963 0 0"/>
+    <parent link="shell1_1"/>
+    <child link="pendulum_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+  <joint name="Fastened_1" type="fixed">
+    <origin xyz="0.0036819023 -0.020716657 -0.0023213953" rpy="-1.5707963 0 0"/>
+    <parent link="shell1_1"/>
+    <child link="shell2_1"/>
+  </joint>
+</robot>

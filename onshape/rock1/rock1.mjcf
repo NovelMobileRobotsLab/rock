@@ -1,0 +1,82 @@
+<robot name="test">
+  <link name="root_1">
+    <visual name="root_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/root_1.stl"/>
+      </geometry>
+      <material name="root_1-material">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision name="root_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/root_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.14070459"/>
+      <inertia ixx="0.00053886708" iyy="0.00053657154" izz="0.00048673883" ixy="0" ixz="0" iyz="2.5574782e-07"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="mount_1">
+    <visual name="mount_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/mount_1.stl"/>
+      </geometry>
+      <material name="mount_1-material">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <collision name="mount_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/mount_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.037144641"/>
+      <inertia ixx="1.7960371e-05" iyy="2.1752436e-06" izz="1.7723066e-05" ixy="2.485767e-06" ixz="0" iyz="0"/>
+      <origin xyz="-0.002836331 0.036726416 -0.01" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="hammer_1">
+    <visual name="hammer_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/hammer_1.stl"/>
+      </geometry>
+      <material name="hammer_1-material">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision name="hammer_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/hammer_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.012062541"/>
+      <inertia ixx="1.57236e-06" iyy="2.4984784e-06" izz="3.885809e-06" ixy="0" ixz="0" iyz="1.1308963e-07"/>
+      <origin xyz="8.2580513e-23 0.046887655 -0.014800048" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <joint name="Revolute_2" type="revolute">
+    <origin xyz="2.1906919e-16 -0.010032667 -0.053219852" rpy="1.5707963 0 -9.9920072e-16"/>
+    <parent link="root_1"/>
+    <child link="mount_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+  <joint name="Revolute_1" type="revolute">
+    <origin xyz="-0.005 0.06045085 -0.01" rpy="-3.1415927 1.5707963 0"/>
+    <parent link="mount_1"/>
+    <child link="hammer_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+</robot>

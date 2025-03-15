@@ -1,0 +1,7 @@
+.env
+env.py
+.DS_Store
+*.log
+__pycache__
+*.mp4
+*.pt
