@@ -14,7 +14,7 @@ class RockEnv:
 
     env_cfg = {
         # "urdf_path": "onshape/pmrock/pmrock.urdf",
-        "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
+        "urdf_path": "../onshape/weird_rock/hellorock.urdf", # fixed file path for new sim folders
 
         "num_commands": 3,
         "num_actions": 1, # angle of pendulum
@@ -45,9 +45,10 @@ class RockEnv:
         "termination_if_angle_greater_than": 90, #degree
 
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.08],
+        "base_init_pos": [0.0, 0.0, 0.3],
         # "base_init_pos": [0.0, 0.0, 0.1],
-        "base_init_quat": [0.7071068 ,0, 0.7071068, 0],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
+        # "base_init_quat": [0.7071068 ,0, 0.7071068, 0],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
+        "base_init_quat": [1., 0., 0., 0.],
 
         "dt": 0.001,
         "substeps": 2,
@@ -211,7 +212,9 @@ class RockEnv:
         # self.get_robot().control_dofs_force(torques, self.motor_dofs) 
         # self.get_robot().control_dofs_velocity([[10]], self.motor_dofs)
 
-        target_speed = torch.clip(self.actions, -1, 1) * self.cfg["max_motor_speed"]
+        # target_speed = torch.clip(self.actions, -1, 1) * self.cfg["max_motor_speed"]
+        target_speed = torch.clip(self.actions + self.cfg["initial_motor_speed"], -self.cfg["max_motor_speed"], self.cfg["max_motor_speed"])
+
         self.get_robot().control_dofs_velocity(target_speed, self.motor_dofs)
 
         # self.get_robot().control_dofs_velocity(self.cfg["initial_motor_speed"]*torch.ones((1,1)), self.motor_dofs)
@@ -432,9 +435,6 @@ if __name__ == "__main__":
         
         obs, _, rews, dones, infos = env.step(100*torch.ones((env.num_envs,1), device=env.device))
 
-        if i % 10 == 0:
-            # print(obs)
-            print(i)
 
         robot_pos = env.get_robot().get_pos()[0].flatten()
         offset_x = 0.0  # centered horizontally
@@ -445,6 +445,11 @@ if __name__ == "__main__":
         env.cam.set_pose(pos=camera_pos, lookat=tuple(float(x) for x in robot_pos))
         env.cam.render()
         env.cam_top.render()
+
+        if i % 10 == 0:
+            # print(obs)
+            print(i)
+            print(robot_pos)        
 
         # if i % 100 == 0:
         #     env.reset()
