@@ -62,7 +62,7 @@ class RockEnv:
         "lean_angle": 5,
 
         "friction": 2,
-        "gravity": [0, 0, -9.81],#[0, 0, -1], normal gravity conditions
+        "gravity": [0, 0, -9.81], # normal gravity conditions
     }
     
     def __init__(self, num_envs:int, env_cfg=None, show_viewer=False, add_camera=False, viewer_timescale=0.5, device="cuda"):
@@ -211,12 +211,11 @@ class RockEnv:
         # self.get_robot().control_dofs_force(torques, self.motor_dofs) 
         # self.get_robot().control_dofs_velocity([[10]], self.motor_dofs)
 
-        target_speed = torch.clip(self.actions + self.cfg["initial_motor_speed"], -self.cfg["max_motor_speed"], self.cfg["max_motor_speed"])
+        target_speed = torch.clip(self.actions, -1, 1) * self.cfg["max_motor_speed"]
         self.get_robot().control_dofs_velocity(target_speed, self.motor_dofs)
 
         # self.get_robot().control_dofs_velocity(self.cfg["initial_motor_speed"]*torch.ones((1,1)), self.motor_dofs)
         
-
         for i in range(10):
             self.scene.step()
 
