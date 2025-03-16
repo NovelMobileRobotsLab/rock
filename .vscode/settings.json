@@ -5,4 +5,6 @@
     ],
     "python.defaultInterpreterPath": "./.venv/bin/python",
     "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.pipenvPath": "./.venv/bin/activate",
 }

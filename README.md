@@ -8,6 +8,44 @@
 A fully enclosed shape that tumbles and jumps.
 https://miro.com/app/board/uXjVLCX5D08=/
 
+# Installation
+
+Create python virtual environment (we use python3.12):
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install dependencies (genesis-world enforces stricter than necessary version requirements so we install it with --no-deps):
+```bash
+pip install -r requirements.txt
+pip install genesis-world --no-deps
+```
+
+
+# Table of Contents
+```
+rock/
+└── embedded/
+    ├── convert_torch_to_tflite/
+    ├── gimbal_prototype_fw/
+    └── esp-tf_speedtest_fw/
+└── genesis-sim/
+    ├── balancing/
+    └── tumbling/
+└── onshape/
+    ├── rock1/
+    ├── pmrock/
+    ├── balo/
+    └── balo2/
+└── rockstation/
+└── sandbox/
+    ├── util/
+    ├── trajopt/
+    └── littlewood_hoop/
+```
+
+
 ## `embedded`
 
 ### `convert_torch_to_tflite`
