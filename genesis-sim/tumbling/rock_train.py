@@ -14,39 +14,39 @@ seed = 1
 num_envs = 4096
 
 train_cfg = {
-    # "algorithm": {
-    #     "clip_param": 0.2,
-    #     "desired_kl": 0.01,
-    #     "entropy_coef": 0.01,
-    #     "gamma": 0.99,
-    #     "lam": 0.95,
-    #     "learning_rate": 0.001,
-    #     "max_grad_norm": 1.0,
-    #     "num_learning_epochs": 5,
-    #     "num_mini_batches": 4,
-    #     "schedule": "adaptive",
-    #     "use_clipped_value_loss": True,
-    #     "value_loss_coef": 1.0,
-    # },
     "algorithm": {
-        "clip_param": 0.2,              # More flexibility in updates
-        "desired_kl": 0.01,             # Keep for adaptive if retained
-        "entropy_coef": 0.1,           # Boost exploration
-        "gamma": 0.999,                  # Longer horizon for smaller dt
-        "lam": 0.99,                    # Better advantage estimation
-        "learning_rate": 0.001,        # Slower, stable learning
-        "max_grad_norm": 1.0,           # Unchanged, stability cap
-        "num_learning_epochs": 5,       # Unchanged, sufficient passes
-        "num_mini_batches": 2,          # Larger updates for stability
-        "schedule": "fixed",         # Test "fixed" if issues persist
-        "use_clipped_value_loss": True, # Unchanged, helps stability
-        "value_loss_coef": 0.1          # Balance value and policy
+        "clip_param": 0.2,
+        "desired_kl": 0.01,
+        "entropy_coef": 0.01,
+        "gamma": 0.99,
+        "lam": 0.95,
+        "learning_rate": 0.001,
+        "max_grad_norm": 1.0,
+        "num_learning_epochs": 5,
+        "num_mini_batches": 4,
+        "schedule": "adaptive",
+        "use_clipped_value_loss": True,
+        "value_loss_coef": 1.0,
     },
+    # "algorithm": {
+    #     "clip_param": 0.2,              # More flexibility in updates
+    #     "desired_kl": 0.01,             # Keep for adaptive if retained
+    #     "entropy_coef": 0.1,           # Boost exploration
+    #     "gamma": 0.999,                  # Longer horizon for smaller dt
+    #     "lam": 0.99,                    # Better advantage estimation
+    #     "learning_rate": 0.001,        # Slower, stable learning
+    #     "max_grad_norm": 1.0,           # Unchanged, stability cap
+    #     "num_learning_epochs": 5,       # Unchanged, sufficient passes
+    #     "num_mini_batches": 2,          # Larger updates for stability
+    #     "schedule": "fixed",         # Test "fixed" if issues persist
+    #     "use_clipped_value_loss": True, # Unchanged, helps stability
+    #     "value_loss_coef": 0.1          # Balance value and policy
+    # },
     "init_member_classes": {},
     "policy": {
         "activation": "elu",
-        "actor_hidden_dims": [128, 128, 128, 128],
-        "critic_hidden_dims": [128, 128, 128, 128],
+        "actor_hidden_dims": [512, 256, 128],
+        "critic_hidden_dims": [512, 256, 128],
         "init_noise_std": 1.0,
     },
     "runner": {
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     # with open(f"{run_dir}/env_cfg.json", "r") as f:
     #     env_cfg = json.load(f)
 
-    env_cfg['kp'] = 99
+    # env_cfg['kp'] = 99
 
     # save environment config to file
     with open(f"{run_dir}/env_cfg.json", "w") as f:
@@ -95,11 +95,6 @@ if __name__ == "__main__":
     # copy the urdf at env_cfg into run_dir
     os.system(f"cp {RockEnv.SIM_DIR}/../{env_cfg['urdf_path']} {run_dir}")
     print(f"cp {RockEnv.SIM_DIR}/../{env_cfg['urdf_path']} {run_dir}")
-    # exit()
-    
-
-    # train_cfg['runner']['resume'] = True
-    # train_cfg['runner']['load_run'] = 
 
 
     print(f"Starting run {exp_name}")
