@@ -401,7 +401,7 @@ class RockEnv:
         aligned_vel = torch.sum(self.commands[:, :2] * global_lin_vel[:, :2], dim=1)
         misaligned_vel = torch.abs(torch.sum(self.commands[:, :2] * rotated_vel[:, :2], dim=1))
         
-        return aligned_vel - 0.5*misaligned_vel
+        return torch.clip(aligned_vel - 0.5*misaligned_vel, min=0)
     
     
     # Reward having actions close to 0

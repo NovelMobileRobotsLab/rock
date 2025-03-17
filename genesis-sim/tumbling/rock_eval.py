@@ -31,7 +31,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
         train_cfg = json.load(f)
 
     env_cfg['resampling_time_s'] = 4
-    env_cfg['episode_length_s'] = 10
+    env_cfg['episode_length_s'] = 999
 
 
     env = RockEnv(
@@ -85,9 +85,9 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
             if do_record:
                 
-                offset_x = 0.0  # centered horizontally
+                offset_x = 1.0  # centered horizontally
                 offset_y = -1.0 
-                offset_z = 3.0  
+                offset_z = .5  
                 camera_pos = (float(robot_pos[0] + offset_x), float(robot_pos[1] + offset_y), offset_z)
                 # print(camera_pos, tuple(float(x) for x in robot_pos))
                 env.cam.set_pose(pos=camera_pos, lookat=(robot_pos[0], robot_pos[1], 0))
@@ -113,6 +113,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "cmdtumble_2025-03-17_02-44-17"
+    exp_name = "cmdtumble_2025-03-17_03-07-53"
     
     rock_eval(exp_name, checkpoint=-1)

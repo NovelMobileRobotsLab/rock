@@ -96,6 +96,10 @@ if __name__ == "__main__":
     os.system(f"cp {RockEnv.SIM_DIR}/../{env_cfg['urdf_path']} {run_dir}")
     print(f"cp {RockEnv.SIM_DIR}/../{env_cfg['urdf_path']} {run_dir}")
 
+    # copy the rock_env.py into run_dir
+    os.system(f"cp {RockEnv.SIM_DIR}/rock_env.py {run_dir}")
+    print(f"cp {RockEnv.SIM_DIR}/rock_env.py {run_dir}")
+
 
     print(f"Starting run {exp_name}")
     gs.init(logging_level="warning")
