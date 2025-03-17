@@ -14,14 +14,14 @@ class RockEnv:
 
     env_cfg = {
         # "urdf_path": "onshape/pmrock/pmrock.urdf",
-        "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
-        # "urdf_path": "../onshape/weird_rock/hellorock.urdf", 
+        # "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
+        "urdf_path": "../onshape/weird_rock/hellorock.urdf", 
 
         "num_commands": 3,
         "num_actions": 1, # angle of pendulum
 
         "num_obs_per_step": 16,
-        "num_obs_hist": 1,  # number of previous observations to include
+        "num_obs_hist": 3,  # number of previous observations to include
 
         "reward_scales": {
             "regularize": 5,
@@ -47,7 +47,7 @@ class RockEnv:
         "base_init_quat": [0.7071068 ,0, 0.7071068, 0],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
 
 
-        "resampling_time_s": 3.0,
+        "resampling_time_s": 4.0,
 
         "episode_length_s": 10.0,
         "max_torque": 0.6,

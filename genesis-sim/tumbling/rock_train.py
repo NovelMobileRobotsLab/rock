@@ -19,7 +19,7 @@ train_cfg = {
         "desired_kl": 0.01,
         "entropy_coef": 0.01,
         "gamma": 0.99,
-        "lam": 0.95,
+        "lam": 0.9,
         "learning_rate": 0.001,
         "max_grad_norm": 1.0,
         "num_learning_epochs": 5,
@@ -102,8 +102,8 @@ if __name__ == "__main__":
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    # last_run = 'cmdtumble_2025-03-16_23-42-34'
-    # ckpt = 350
+    # last_run = 'cmdtumble_2025-03-17_00-03-51'
+    # ckpt = 750
     # runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
     # runner.current_learning_iteration = ckpt
 
