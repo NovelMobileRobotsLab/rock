@@ -21,11 +21,11 @@ class RockEnv:
         "num_actions": 1, # angle of pendulum
 
         "num_obs_per_step": 16,
-        "num_obs_hist": 3,  # number of previous observations to include
+        "num_obs_hist": 1,  # number of previous observations to include
 
         "reward_scales": {
             "regularize": 5,
-            "direction": 2.0,
+            "direction": 100.0,
             # "tracking_lin_vel": 1.0,
         },
 
@@ -273,8 +273,9 @@ class RockEnv:
                 # self.base_lin_vel * 1e3,  # 3
                 # self.base_ang_vel,  # 3
                 self.get_robot().get_quat(), # 4
-                self.get_robot().get_ang() / 60,  # 3
-                self.get_robot().get_vel() * 1e2,  # 3
+                # self.get_robot().get_pos(), # 3
+                self.get_robot().get_ang() / 6,  # 3
+                self.get_robot().get_vel() * 10,  # 3
                 self.get_robot().get_dofs_velocity(self.motor_dofs) / 50,  # 1
                 self.get_robot().get_dofs_position(self.motor_dofs) / 10,  # 1
                 self.commands,  # 3
@@ -453,6 +454,7 @@ if __name__ == "__main__":
 
         if i % 10 == 0:
             print(i)
+            print(obs[0])
 
         robot_pos = env.get_robot().get_pos()[0].flatten().cpu().numpy()
         robot_vel = env.get_robot().get_vel()[0].flatten().cpu().numpy()

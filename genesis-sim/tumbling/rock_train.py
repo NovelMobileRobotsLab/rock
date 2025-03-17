@@ -101,10 +101,10 @@ if __name__ == "__main__":
     gs.init(logging_level="warning")
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
-    last_run = 'cmdtumble_2025-03-16_21-03-51'
-    ckpt = 900
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
-    runner.current_learning_iteration = ckpt
+    # last_run = 'cmdtumble_2025-03-16_23-42-34'
+    # ckpt = 350
+    # runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    # runner.current_learning_iteration = ckpt
 
     runner.learn(learning_iterations, init_at_random_ep_len=True)

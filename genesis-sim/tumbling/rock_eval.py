@@ -30,8 +30,8 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     with open(f"{log_dir}/train_cfg.json", "r") as f:
         train_cfg = json.load(f)
 
-    env_cfg['resampling_time_s'] = 3
-    env_cfg['episode_length_s'] = 3
+    env_cfg['resampling_time_s'] = 4
+    env_cfg['episode_length_s'] = 10
 
 
     env = RockEnv(
@@ -61,7 +61,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
         env.cam.start_recording()
 
     with torch.no_grad():
-        for i in range(1000): # doubled number of steps from 1000 to 2000
+        for i in range(2000): # doubled number of steps from 1000 to 2000
             actions = policy(obs)
             # actions = torch.ones((1,1))
             obs, _, rews, dones, infos = env.step(actions)
@@ -69,6 +69,16 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
             robot_pos = env.get_robot().get_pos()[0].flatten().cpu().numpy()
             robot_vel = env.get_robot().get_vel()[0].flatten().cpu().numpy()
+
+            # Apply low pass filter to robot velocity
+            if i == 0:
+                # Initialize filtered velocity on first iteration
+                filtered_vel = robot_vel
+            else:
+                # Low pass filter with alpha=0.1 (smaller alpha = more smoothing)
+                alpha = 0.1
+                filtered_vel = alpha * robot_vel + (1 - alpha) * filtered_vel
+            robot_vel = filtered_vel
 
             dof_vel = env.dof_vel[0].flatten().cpu().numpy()
             action = actions[0].flatten().cpu().numpy()
@@ -103,6 +113,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "cmdtumble_2025-03-16_21-34-48"
+    exp_name = "cmdtumble_2025-03-17_00-03-51"
     
-    rock_eval(exp_name, checkpoint=1100)
+    rock_eval(exp_name, checkpoint=250)
