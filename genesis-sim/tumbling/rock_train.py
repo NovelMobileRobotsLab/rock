@@ -8,7 +8,7 @@ from datetime import datetime
 
 
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-exp_name = f"balo2_tumble_{timestamp}"
+exp_name = f"cmdtumble_{timestamp}"
 learning_iterations = 1000
 seed = 1
 num_envs = 4096
@@ -55,7 +55,7 @@ train_cfg = {
         "experiment_name": exp_name,
         "load_run": -1,
         "log_interval": 1,
-        "num_steps_per_env": 24,
+        "num_steps_per_env": 64,
         "policy_class_name": "ActorCritic",
         "record_interval": -1,
         "resume": False,
@@ -101,10 +101,10 @@ if __name__ == "__main__":
     gs.init(logging_level="warning")
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
-    # last_run = 'balo1_2025-03-01_18-26-20'
-    # ckpt = 7400
+    last_run = 'cmdtumble_2025-03-16_21-03-51'
+    ckpt = 900
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    # runner.load(f'/media/nmbl/Windows/Projects/Rock/rockmech/sim/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
-    # runner.current_learning_iteration = ckpt
+    runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    runner.current_learning_iteration = ckpt
 
-    runner.learn(learning_iterations)
+    runner.learn(learning_iterations, init_at_random_ep_len=True)

@@ -1,0 +1,135 @@
+<?xml version="1.0" ?>
+<robot name="hellorock">
+  <link name="Part_1_1">
+    <visual name="Part_1_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/Part_1_1.stl"/>
+      </geometry>
+      <material name="Part_1_1-material">
+        <color rgba="1 0.5 0 0.25"/>
+      </material>
+    </visual>
+    <collision name="Part_1_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/Part_1_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.10437491"/>
+      <inertia ixx="0.00018051825" iyy="0.00026757645" izz="0.00018147816" ixy="6.9207484e-06" ixz="-9.9118549e-07" iyz="4.9776314e-06"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="pendulum_1">
+    <visual name="pendulum_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+      <material name="pendulum_1-material">
+        <color rgba="1 0 0.5 0.25"/>
+      </material>
+    </visual>
+    <collision name="pendulum_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.0071673613"/>
+      <inertia ixx="1.7166551e-06" iyy="2.0945342e-06" izz="3.0079635e-06" ixy="9.7125441e-13" ixz="3.1462099e-07" iyz="1.152783e-12"/>
+      <origin xyz="-0.037231809 3.3807232e-08 0.011111379" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="Part_1_2">
+    <visual name="Part_1_2_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/Part_1_2.stl"/>
+      </geometry>
+      <material name="Part_1_2-material">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision name="Part_1_2_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/Part_1_2.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.10207892"/>
+      <inertia ixx="0.00017366778" iyy="0.00017452887" izz="0.0002660292" ixy="-9.791365e-07" ixz="-5.7734117e-06" iyz="-4.5689111e-06"/>
+      <origin xyz="0.0021558313 0.002175716 0.019769197" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="leadestimation_1">
+    <visual name="leadestimation_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/leadestimation_1.stl"/>
+      </geometry>
+      <material name="leadestimation_1-material">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision name="leadestimation_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/leadestimation_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.13856077"/>
+      <inertia ixx="2.5003304e-05" iyy="7.9678038e-06" izz="2.1175891e-05" ixy="0" ixz="0" iyz="0"/>
+      <origin xyz="2.0816682e-17 -4.8753752e-18 -0.0113" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="pendulumcap_1">
+    <visual name="pendulumcap_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulumcap_1.stl"/>
+      </geometry>
+      <material name="pendulumcap_1-material">
+        <color rgba="1 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision name="pendulumcap_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulumcap_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.0015467673"/>
+      <inertia ixx="2.4712971e-07" iyy="3.6445559e-08" izz="2.8142381e-07" ixy="0" ixz="-5.8823535e-11" iyz="0"/>
+      <origin xyz="0.00017410324 4.9876399e-18 -0.00032712916" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <joint name="Revolute_1" type="revolute">
+    <origin xyz="-0.0024220932 0.021060383 -0.0022385223" rpy="-1.5707963 0 0"/>
+    <parent link="Part_1_1"/>
+    <child link="pendulum_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+  <joint name="Fastened_1" type="fixed">
+    <origin xyz="-0.0024220932 0.051060383 -0.0022385223" rpy="1.5707963 0 3.1415927"/>
+    <parent link="Part_1_1"/>
+    <child link="Part_1_2"/>
+  </joint>
+  <joint name="Fastened_2" type="fixed">
+    <origin xyz="-0.044734945 1.7210086e-18 0.0044" rpy="3.1415927 0 0"/>
+    <parent link="pendulum_1"/>
+    <child link="leadestimation_1"/>
+  </joint>
+  <joint name="Fastened_3" type="fixed">
+    <origin xyz="2.0816682e-17 -9.0799691e-18 -0.0226" rpy="0 0 0"/>
+    <parent link="leadestimation_1"/>
+    <child link="pendulumcap_1"/>
+  </joint>
+</robot>

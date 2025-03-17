@@ -1,0 +1,41 @@
+{
+    "urdf_path": "../onshape/weird_rock/hellorock.urdf",
+    "num_commands": 3,
+    "num_actions": 1,
+    "num_obs_per_step": 16,
+    "num_obs_hist": 3,
+    "reward_scales": {
+        "regularize": 10,
+        "direction": 1.0
+    },
+    "tracking_sigma": 0.1,
+    "dofs": {
+        "Revolute_1": 0.0
+    },
+    "kp": 100,
+    "kd": 100,
+    "base_init_pos": [
+        0.0,
+        0.0,
+        0.08
+    ],
+    "base_init_quat": [
+        0.7071068,
+        0,
+        0.7071068,
+        0
+    ],
+    "resampling_time_s": 3.0,
+    "episode_length_s": 10.0,
+    "max_torque": 0.6,
+    "max_motor_speed": 276,
+    "control_dt": 0.01,
+    "sim_steps_per_control": 10,
+    "friction": 1,
+    "gravity": [
+        0,
+        0,
+        -9.81
+    ],
+    "substeps": 2
+}

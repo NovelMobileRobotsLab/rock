@@ -30,6 +30,9 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     with open(f"{log_dir}/train_cfg.json", "r") as f:
         train_cfg = json.load(f)
 
+    env_cfg['resampling_time_s'] = 3
+    env_cfg['episode_length_s'] = 3
+
 
     env = RockEnv(
         num_envs=1,
@@ -57,22 +60,49 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     if do_record:
         env.cam.start_recording()
 
-    for i in range(2000): # doubled number of steps from 1000 to 2000
-        actions = policy(obs)
-        # actions = torch.ones((1,1))
-        obs, _, rews, dones, infos = env.step(actions)
+    with torch.no_grad():
+        for i in range(1000): # doubled number of steps from 1000 to 2000
+            actions = policy(obs)
+            # actions = torch.ones((1,1))
+            obs, _, rews, dones, infos = env.step(actions)
 
-        if do_record:
+
+            robot_pos = env.get_robot().get_pos()[0].flatten().cpu().numpy()
+            robot_vel = env.get_robot().get_vel()[0].flatten().cpu().numpy()
+
+            dof_vel = env.dof_vel[0].flatten().cpu().numpy()
+            action = actions[0].flatten().cpu().numpy()
+
+            if do_record:
+                
+                offset_x = 0.0  # centered horizontally
+                offset_y = -1.0 
+                offset_z = 3.0  
+                camera_pos = (float(robot_pos[0] + offset_x), float(robot_pos[1] + offset_y), offset_z)
+                # print(camera_pos, tuple(float(x) for x in robot_pos))
+                env.cam.set_pose(pos=camera_pos, lookat=(robot_pos[0], robot_pos[1], 0))
+
+                robot_vel_plane = np.array([robot_vel[0], robot_vel[1], 0])
+                
+                env.scene.draw_debug_arrow(pos=robot_pos, vec=env.commands[0].cpu()*0.3, color=(1,0,0,0.5))
+                env.scene.draw_debug_arrow(pos=robot_pos, vec=robot_vel_plane*0.3, color=(0,1,0,0.5))
+                env.cam.render()
+                env.scene.clear_debug_objects()
+
+
+            if i % 200 == 0:
+                    env.resample_commands()
+
             if i % 10 == 0:
                 print(i)
-            env.cam.render()
+                print(float(dof_vel), float(action), env._reward_regularize())
 
-    env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=30) 
+        env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=30) 
             
 
 
 if __name__ == "__main__":
 
-    exp_name = "balo2_tumble_2025-03-11_17-09-03"
+    exp_name = "cmdtumble_2025-03-16_21-34-48"
     
-    rock_eval(exp_name, checkpoint=1000)
+    rock_eval(exp_name, checkpoint=1100)
