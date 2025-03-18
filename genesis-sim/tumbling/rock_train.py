@@ -1,25 +1,33 @@
+import traceback
 from rock_env import RockEnv
 import json
 import os
+import itertools
+import copy
 
 from rsl_rl.runners import OnPolicyRunner
 import genesis as gs
 from datetime import datetime
 
 
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-exp_name = f"cmdtumble_{timestamp}"
-learning_iterations = 1000
+# Define parameter sweeps (feel free to modify these values)
+gamma_values = [0.97, 0.99, 0.995, 0.999]  # Discount factor values
+lambda_values = [0.8, 0.9, 0.95, 0.99]  # GAE lambda values
+num_steps_values = [24, 48, 64, 96]  # Rollout length values
+
+# Default parameters
+learning_iterations = 500
 seed = 1
 num_envs = 4096
 
-train_cfg = {
+# Base training configuration
+base_train_cfg = {
     "algorithm": {
         "clip_param": 0.2,
         "desired_kl": 0.01,
         "entropy_coef": 0.01,
-        "gamma": 0.99,
-        "lam": 0.9,
+        "gamma": 0.99,  # Default value, will be overridden in parameter sweep
+        "lam": 0.9,     # Default value, will be overridden in parameter sweep
         "learning_rate": 0.001,
         "max_grad_norm": 1.0,
         "num_learning_epochs": 5,
@@ -52,10 +60,10 @@ train_cfg = {
     "runner": {
         "algorithm_class_name": "PPO",
         "checkpoint": -1,
-        "experiment_name": exp_name,
+        "experiment_name": "",  # Will be set in parameter sweep
         "load_run": -1,
         "log_interval": 1,
-        "num_steps_per_env": 64,
+        "num_steps_per_env": 64,  # Default value, will be overridden in parameter sweep
         "policy_class_name": "ActorCritic",
         "record_interval": -1,
         "resume": False,
@@ -68,21 +76,58 @@ train_cfg = {
     "seed": seed,
 }
 
-
-
-if __name__ == "__main__":
-
-    run_dir = f"{RockEnv.SIM_DIR}/runs/{exp_name}"
+def run_training(params_dict):
+    """Run a single training session with the specified parameters.
+    
+    Args:
+        params_dict: Dictionary containing parameters to modify. Each key should be in the format
+                     "config:section:parameter" where config is either "train" or "env",
+                     section is the section within the config (e.g., "algorithm" or "runner"),
+                     and parameter is the name of the parameter to modify.
+                     For env_cfg parameters, just use "env:parameter_name".
+    """
+    # Create a copy of the base config and get default env config
+    train_cfg = copy.deepcopy(base_train_cfg)
+    env_cfg = copy.deepcopy(RockEnv.env_cfg)
+    
+    # Build experiment name based on parameter keys and values
+    exp_parts = ["CTE"]
+    param_str = ""
+    
+    # Apply parameter changes and build experiment name
+    for param_key, param_value in params_dict.items():
+        parts = param_key.split(":")
+        
+        # Get first letter of the last part (parameter name)
+        param_name = parts[-1]
+        first_letter = param_name[0]
+        
+        # Add to experiment name
+        param_str += f"_{first_letter}{param_value}"
+        
+        # Apply parameter based on the config type
+        if parts[0] == "train":
+            if len(parts) == 3:  # train:section:parameter
+                section, parameter = parts[1], parts[2]
+                train_cfg[section][parameter] = param_value
+            else:  # Direct train config parameter
+                train_cfg[parts[1]] = param_value
+        elif parts[0] == "env":
+            if len(parts) == 2:  # env:parameter
+                env_cfg[parts[1]] = param_value
+    
+    # Create experiment name with parameter values
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    exp_name = f"CTE{param_str}_{timestamp}"
+    train_cfg["runner"]["experiment_name"] = exp_name
+    
+    # Print parameter summary
+    print(f"Starting run {exp_name} with parameters:")
+    for key, value in params_dict.items():
+        print(f"  {key} = {value}")
+    
+    run_dir = f"{RockEnv.SIM_DIR}/autoruns/{exp_name}"
     os.makedirs(run_dir, exist_ok=True)
-
-    # default environment config
-    env_cfg = RockEnv.env_cfg
-
-    # # load environment config from file
-    # with open(f"{run_dir}/env_cfg.json", "r") as f:
-    #     env_cfg = json.load(f)
-
-    # env_cfg['kp'] = 99
 
     # save environment config to file
     with open(f"{run_dir}/env_cfg.json", "w") as f:
@@ -100,8 +145,6 @@ if __name__ == "__main__":
     os.system(f"cp {RockEnv.SIM_DIR}/rock_env.py {run_dir}")
     print(f"cp {RockEnv.SIM_DIR}/rock_env.py {run_dir}")
 
-
-    print(f"Starting run {exp_name}")
     gs.init(logging_level="warning")
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
@@ -111,4 +154,67 @@ if __name__ == "__main__":
     # runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
     # runner.current_learning_iteration = ckpt
 
-    runner.learn(learning_iterations, init_at_random_ep_len=True)
+    try:
+        runner.learn(learning_iterations, init_at_random_ep_len=True)
+    except Exception as e:
+        # Write error to file
+        with open(f"{run_dir}/error.txt", "w") as f:
+            f.write(f"Error during training:\n{str(e)}\n\n")
+            f.write("Traceback:\n")
+            f.write(traceback.format_exc())
+        print(f"Error occurred during training. See {run_dir}/error.txt for details.")
+
+    # Cleanup to free memory
+    del env
+    del runner
+    import gc
+    gc.collect()
+    
+    # Properly close Genesis
+    if hasattr(gs, "destroy"):
+        gs.destroy()
+
+
+if __name__ == "__main__":
+    # Example 1: Single run with default gamma, lambda, and num_steps_per_env values
+    # params = {
+    #     "train:algorithm:gamma": 0.99,
+    #     "train:algorithm:lam": 0.9,
+    #     "train:runner:num_steps_per_env": 64
+    # }
+    # run_training(params)
+    
+    # Example 2: Sweeping across gamma and lambda values only
+    """
+    for gamma in gamma_values:
+        for lam in lambda_values:
+            params = {
+                "train:algorithm:gamma": gamma,
+                "train:algorithm:lam": lam,
+                "train:runner:num_steps_per_env": 64  # Fixed value
+            }
+            run_training(params)
+    """
+    
+    # Example 3: Full parameter sweep
+    
+    for gamma, lam, num_steps in itertools.product(gamma_values, lambda_values, num_steps_values):
+        params = {
+            "train:algorithm:gamma": gamma,
+            "train:algorithm:lam": lam,
+            "train:runner:num_steps_per_env": num_steps
+        }
+        run_training(params)
+    
+    
+    # Example 4: Environment parameter sweep
+    """
+    for kp in [80, 100, 120]:
+        for kd in [80, 100, 120]:
+            params = {
+                "env:kp": kp,
+                "env:kd": kd,
+                "train:algorithm:gamma": 0.99  # Fixed training parameters
+            }
+            run_training(params)
+    """

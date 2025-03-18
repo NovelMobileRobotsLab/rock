@@ -25,7 +25,7 @@ if os.getcwd() != onshape_dir:
     exit()
 
 # CHANGE THESE FOR NEW FILES
-save_name = "hellorock"
+save_name = "hellorock_elec"
 url = "https://cad.onshape.com/documents/c330ce83f7b3527be6ffef2b/w/e336b9cb14c1d649c69b79d9/e/81d79c19a2e05dc4d8dbf4fd"
 var_studio_name = "Variable Studio 1"
 main_assembly_name = "hellorock"
