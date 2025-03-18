@@ -21,7 +21,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     # gs.init(logging_level='info')
     torch.no_grad()
 
-    log_dir = f"{RockEnv.SIM_DIR}/runs/{run_name}"
+    log_dir = f"{RockEnv.SIM_DIR}/autoruns/{run_name}"
 
     if env_cfg is None:
         with open(f"{log_dir}/env_cfg.json", "r") as f:
@@ -30,7 +30,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     with open(f"{log_dir}/train_cfg.json", "r") as f:
         train_cfg = json.load(f)
 
-    env_cfg['resampling_time_s'] = 4
+    env_cfg['resampling_time_s'] = 5
     env_cfg['episode_length_s'] = 999
 
 
@@ -87,7 +87,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 
                 offset_x = 1.0  # centered horizontally
                 offset_y = -1.0 
-                offset_z = .5  
+                offset_z = 1  
                 camera_pos = (float(robot_pos[0] + offset_x), float(robot_pos[1] + offset_y), offset_z)
                 # print(camera_pos, tuple(float(x) for x in robot_pos))
                 env.cam.set_pose(pos=camera_pos, lookat=(robot_pos[0], robot_pos[1], 0))
@@ -100,19 +100,19 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 env.scene.clear_debug_objects()
 
 
-            if i % 200 == 0:
-                    env.resample_commands()
+            # if i % 200 == 0:
+            #         env.resample_commands()
 
             if i % 10 == 0:
                 print(i)
                 print(float(dof_vel), float(action), env._reward_regularize())
 
-        env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=30) 
+        env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=int(0.5 * 1/env.control_dt)) 
             
 
 
 if __name__ == "__main__":
 
-    exp_name = "cmdtumble_2025-03-17_03-07-53"
+    exp_name = "CTE_g0.99_l0.95_n96_2025-03-18_05-28-17"
     
     rock_eval(exp_name, checkpoint=-1)

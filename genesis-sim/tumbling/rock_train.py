@@ -16,7 +16,7 @@ lambda_values = [0.8, 0.9, 0.95, 0.99]  # GAE lambda values
 num_steps_values = [24, 48, 64, 96]  # Rollout length values
 
 # Default parameters
-learning_iterations = 500
+learning_iterations = 300
 seed = 1
 num_envs = 4096
 
