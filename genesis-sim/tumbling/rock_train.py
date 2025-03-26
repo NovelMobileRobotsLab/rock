@@ -118,7 +118,7 @@ def run_training(params_dict):
     
     # Create experiment name with parameter values
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    exp_name = f"CTE{param_str}_{timestamp}"
+    exp_name = f"intui2_{param_str}_{timestamp}"
     train_cfg["runner"]["experiment_name"] = exp_name
     
     # Print parameter summary
@@ -126,7 +126,7 @@ def run_training(params_dict):
     for key, value in params_dict.items():
         print(f"  {key} = {value}")
     
-    run_dir = f"{RockEnv.SIM_DIR}/autoruns/{exp_name}"
+    run_dir = f"{RockEnv.SIM_DIR}/runs/{exp_name}"
     os.makedirs(run_dir, exist_ok=True)
 
     # save environment config to file
@@ -149,10 +149,10 @@ def run_training(params_dict):
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    # last_run = 'cmdtumble_2025-03-17_00-03-51'
-    # ckpt = 750
-    # runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
-    # runner.current_learning_iteration = ckpt
+    last_run = 'intui2__g0.995_l0.9_n64_2025-03-25_17-11-20'
+    ckpt = 300
+    runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    runner.current_learning_iteration = ckpt
 
     try:
         runner.learn(learning_iterations, init_at_random_ep_len=True)
@@ -177,12 +177,12 @@ def run_training(params_dict):
 
 if __name__ == "__main__":
     # Example 1: Single run with default gamma, lambda, and num_steps_per_env values
-    # params = {
-    #     "train:algorithm:gamma": 0.99,
-    #     "train:algorithm:lam": 0.9,
-    #     "train:runner:num_steps_per_env": 64
-    # }
-    # run_training(params)
+    params = {
+        "train:algorithm:gamma": 0.995,
+        "train:algorithm:lam": 0.90,
+        "train:runner:num_steps_per_env": 64
+    }
+    run_training(params)
     
     # Example 2: Sweeping across gamma and lambda values only
     """
@@ -198,13 +198,13 @@ if __name__ == "__main__":
     
     # Example 3: Full parameter sweep
     
-    for gamma, lam, num_steps in itertools.product(gamma_values, lambda_values, num_steps_values):
-        params = {
-            "train:algorithm:gamma": gamma,
-            "train:algorithm:lam": lam,
-            "train:runner:num_steps_per_env": num_steps
-        }
-        run_training(params)
+    # for gamma, lam, num_steps in itertools.product(gamma_values, lambda_values, num_steps_values):
+    #     params = {
+    #         "train:algorithm:gamma": gamma,
+    #         "train:algorithm:lam": lam,
+    #         "train:runner:num_steps_per_env": num_steps
+    #     }
+    #     run_training(params)
     
     
     # Example 4: Environment parameter sweep

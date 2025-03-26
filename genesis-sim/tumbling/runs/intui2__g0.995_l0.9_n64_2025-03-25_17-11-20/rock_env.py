@@ -211,8 +211,6 @@ class RockEnv:
         target_speed = torch.clip(self.actions, -1, 1) * self.cfg["max_motor_speed"]
         self.get_robot().control_dofs_velocity(target_speed, self.motor_dofs)
 
-        # self.get_robot().control_dofs_force(20*torch.ones_like(self.actions), self.motor_dofs);
-
         
         for i in range(self.cfg["sim_steps_per_control"]):
             self.scene.step()
@@ -452,7 +450,6 @@ if __name__ == "__main__":
 
     print("Building env")
     env = RockEnv(num_envs=2, add_camera=True)
-
     # env = RockEnv(num_envs=1, show_viewer=True)
 
     print("Starting simulation")
@@ -461,20 +458,13 @@ if __name__ == "__main__":
     # env.cam_top.start_recording()
 
 
-    env.get_robot().set_dofs_kp((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-    env.get_robot().set_dofs_kv((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-
-
     for i in range(300):
         
         obs, _, rews, dones, infos = env.step( 0.1 *torch.ones((env.num_envs,1), device=env.device))
 
         if i % 10 == 0:
             print(i)
-            # print(obs[0])
-        print(env.get_robot().get_dofs_control_force()[0].flatten().cpu().numpy())
-        print(env.get_robot().get_dofs_kp().cpu().numpy())
-        print(env.get_robot().get_dofs_kv())
+            print(obs[0])
 
         robot_pos = env.get_robot().get_pos()[0].flatten().cpu().numpy()
         robot_vel = env.get_robot().get_vel()[0].flatten().cpu().numpy()

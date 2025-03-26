@@ -21,7 +21,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     # gs.init(logging_level='info')
     torch.no_grad()
 
-    log_dir = f"{RockEnv.SIM_DIR}/autoruns/{run_name}"
+    log_dir = f"{RockEnv.SIM_DIR}/runs/{run_name}"
 
     if env_cfg is None:
         with open(f"{log_dir}/env_cfg.json", "r") as f:
@@ -113,6 +113,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "CTE_g0.99_l0.95_n96_2025-03-18_05-28-17"
+    exp_name = "intui2__g0.995_l0.9_n64_2025-03-25_17-22-12"
     
     rock_eval(exp_name, checkpoint=-1)
