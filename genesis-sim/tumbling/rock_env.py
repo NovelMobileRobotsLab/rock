@@ -448,6 +448,7 @@ class RockEnv:
 
 
 if __name__ == "__main__":
+    np.set_printoptions(precision=3, linewidth=200)
     gs.init(logging_level="warning")
 
     print("Building env")
@@ -460,9 +461,20 @@ if __name__ == "__main__":
     env.cam.start_recording()
     # env.cam_top.start_recording()
 
+    robot = env.get_robot()
 
-    env.get_robot().set_dofs_kp((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-    env.get_robot().set_dofs_kv((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
+
+    robot.set_dofs_kp((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
+    robot.set_dofs_kv((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
+
+    print("armature before", robot.get_dofs_armature())
+    robot.set_dofs_armature((0,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
+    print("armature after", robot.get_dofs_armature())
+
+    print("damping before", robot.get_dofs_damping())
+    robot.set_dofs_damping((0,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
+    print("damping after", robot.get_dofs_damping())
+
 
 
     for i in range(300):
@@ -472,12 +484,65 @@ if __name__ == "__main__":
         if i % 10 == 0:
             print(i)
             # print(obs[0])
-        print(env.get_robot().get_dofs_control_force()[0].flatten().cpu().numpy())
-        print(env.get_robot().get_dofs_kp().cpu().numpy())
-        print(env.get_robot().get_dofs_kv())
+        print("control force")
+        print(robot.get_dofs_control_force()[0].flatten().cpu().numpy())
+        # print(robot.get_dofs_kp().cpu().numpy())
+        # print(robot.get_dofs_kv().cpu().numpy())
+        # print(robot.get_dofs_position()[0].flatten().cpu().numpy()[-1])
 
-        robot_pos = env.get_robot().get_pos()[0].flatten().cpu().numpy()
-        robot_vel = env.get_robot().get_vel()[0].flatten().cpu().numpy()
+        motorjoints = robot.joints[-1]
+        # for joint in joints:
+        #     print(joint)
+
+        massmats = robot.solver.mass_mat_inv.to_numpy()[:, :, 0]
+        # print("massmats", massmats.shape)
+        # print(np.diag(massmats))
+        if i == 0:
+            massmat_sum = massmats
+        else:
+            massmat_sum += massmats
+        if i == 299: 
+            print("massmat_avg", massmat_sum/300) 
+
+        ''' normal masses
+        massmats (7, 7)
+[   3.162    4.182    4.324 1589.795 1485.914 1471.903    9.887]
+massmat_avg [[ 3.897e+00 -5.845e-02  2.898e-01 -2.927e+00 -1.110e+00 -7.266e+00  3.119e-03]
+ [-5.845e-02  3.711e+00 -5.736e-02  4.824e-01  2.894e+00 -1.461e+01 -1.435e-02]
+ [ 2.898e-01 -5.736e-02  3.899e+00  1.207e+01  3.574e+00 -1.079e+01 -1.326e-02]
+ [-2.927e+00  4.824e-01  1.207e+01  1.536e+03 -4.144e+01 -1.454e-01 -8.945e-02]
+ [-1.110e+00  2.894e+00  3.574e+00 -4.144e+01  1.489e+03 -2.070e+01  3.030e+00]
+ [-7.266e+00 -1.461e+01 -1.079e+01 -1.454e-01 -2.070e+01  1.529e+03 -3.311e-02]
+ [ 3.119e-03 -1.435e-02 -1.326e-02 -8.945e-02  3.030e+00 -3.311e-02  9.887e+00]]
+ 
+ big pendulum a d interias:
+ massmats (7, 7)
+[2.747 1.313 3.210 1.396e+03 1.246e+03 1.395, 9.882]
+massmat_avg [[ 2.435e+00  6.354e-02 -1.810e-01  4.711e+00  9.624e-01 -1.062e+01 -4.193e-03]
+ [ 6.354e-02  2.609e+00  1.442e-02 -4.349e+00 -4.664e+00 -2.062e+00  2.015e-02]
+ [-1.810e-01  1.442e-02  2.061e+00  2.647e+00  9.177e+00  5.152e+00 -4.051e-02]
+ [ 4.711e+00 -4.349e+00  2.647e+00  1.402e+03 -3.601e+01 -1.911e+00 -8.967e-02]
+ [ 9.624e-01 -4.664e+00  9.177e+00 -3.601e+01  1.246e+03 -1.777e+01  4.150e+00]
+ [-1.062e+01 -2.062e+00  5.152e+00 -1.911e+00 -1.777e+01  1.390e+03 -3.346e-02]
+ [-4.193e-03  2.015e-02 -4.051e-02 -8.967e-02  4.150e+00 -3.346e-02  9.882e+00]]
+
+
+ big mass pendulum only:
+ massmats (7, 7)
+[   2.846    2.354    2.335 1667.438 1283.549 1186.894    9.883]
+massmat_avg [[ 1.747e+00  1.281e-01  5.434e-01 -9.319e-01  2.576e+00 -4.552e+00 -1.317e-02]
+ [ 1.281e-01  2.961e+00 -3.023e-01  6.369e+00 -2.617e+01  5.103e+00  1.222e-01]
+ [ 5.434e-01 -3.023e-01  2.533e+00  2.490e+00  2.041e+01 -1.824e+00 -9.324e-02]
+ [-9.319e-01  6.369e+00  2.490e+00  1.432e+03 -3.277e+01  1.111e-01 -1.104e-01]
+ [ 2.576e+00 -2.617e+01  2.041e+01 -3.277e+01  1.289e+03 -2.072e+01  3.950e+00]
+ [-4.552e+00  5.103e+00 -1.824e+00  1.111e-01 -2.072e+01  1.428e+03 -2.338e-02]
+ [-1.317e-02  1.222e-01 -9.324e-02 -1.104e-01  3.950e+00 -2.338e-02  9.883e+00]]
+ 
+ '''
+        
+
+        robot_pos = robot.get_pos()[0].flatten().cpu().numpy()
+        robot_vel = robot.get_vel()[0].flatten().cpu().numpy()
 
         
         env.scene.draw_debug_arrow(pos=robot_pos, vec=env.commands[0].cpu()*0.3, color=(1,0,0,0.5))
@@ -493,8 +558,8 @@ if __name__ == "__main__":
         env.scene.clear_debug_objects()
         # env.cam_top.render()
 
-        if i % 20 == 0:
-            env.reset()
+        # if i % 20 == 0:
+        #     env.reset()
 
-    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/testfollow.mp4", fps=30)
+    env.cam.stop_recording(f"{RockEnv.SIM_DIR}/testfollow2.mp4", fps=30)
     # env.cam_top.stop_recording(f"{RockEnv.SIM_DIR}/testfollow_top.mp4", fps=30)
