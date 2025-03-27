@@ -1,0 +1,37 @@
+Error during training:
+Expected parameter loc (Tensor of shape (4096, 1)) of distribution Normal(loc: torch.Size([4096, 1]), scale: torch.Size([4096, 1])) to satisfy the constraint Real(), but found invalid values:
+tensor([[-0.2048],
+        [ 0.6032],
+        [ 0.0792],
+        ...,
+        [ 0.7090],
+        [-0.5876],
+        [-0.7491]], device='cuda:0')
+
+Traceback:
+Traceback (most recent call last):
+  File "/media/nmbl/Windows/Projects/rock/genesis-sim/tumbling/rock_train.py", line 159, in run_training
+    runner.learn(learning_iterations, init_at_random_ep_len=True)
+  File "/media/nmbl/Windows/Projects/Rock/.venv/src/rsl-rl/rsl_rl/runners/on_policy_runner.py", line 107, in learn
+    actions = self.alg.act(obs, critic_obs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/nmbl/Windows/Projects/Rock/.venv/src/rsl-rl/rsl_rl/algorithms/ppo.py", line 94, in act
+    self.transition.actions = self.actor_critic.act(obs).detach()
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/nmbl/Windows/Projects/Rock/.venv/src/rsl-rl/rsl_rl/modules/actor_critic.py", line 124, in act
+    self.update_distribution(observations)
+  File "/media/nmbl/Windows/Projects/Rock/.venv/src/rsl-rl/rsl_rl/modules/actor_critic.py", line 121, in update_distribution
+    self.distribution = Normal(mean, mean*0. + self.std)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/media/nmbl/Windows/Projects/Rock/.venv/lib/python3.12/site-packages/torch/distributions/normal.py", line 59, in __init__
+    super().__init__(batch_shape, validate_args=validate_args)
+  File "/media/nmbl/Windows/Projects/Rock/.venv/lib/python3.12/site-packages/torch/distributions/distribution.py", line 71, in __init__
+    raise ValueError(
+ValueError: Expected parameter loc (Tensor of shape (4096, 1)) of distribution Normal(loc: torch.Size([4096, 1]), scale: torch.Size([4096, 1])) to satisfy the constraint Real(), but found invalid values:
+tensor([[-0.2048],
+        [ 0.6032],
+        [ 0.0792],
+        ...,
+        [ 0.7090],
+        [-0.5876],
+        [-0.7491]], device='cuda:0')
