@@ -166,15 +166,15 @@ class RockEnv:
 
         #domain randomization
         self.get_robot().set_friction_ratio(
-            friction_ratio=self.cfg["friction_range"][0] + (self.cfg["friction_range"][1] - self.cfg["friction_range"][0]) * torch.rand(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
+            friction_ratio=self.cfg["friction_range"][0] + (self.cfg["friction_range"][1] - self.cfg["friction_range"][0]) * torch.rand(self.scene.n_envs, robot.n_links),
+            ls_idx_local=np.arange(0, robot.n_links),
         )
         self.get_robot().set_mass_shift(
-            mass_shift = self.cfg["mass_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
+            mass_shift = self.cfg["mass_shift_scale"] * torch.randn(self.scene.n_envs, env.get_robot().n_links),
+            link_indices=np.arange(0, env.get_robot().n_links),
         )
         self.get_robot().set_COM_shift(
-            com_shift = self.cfg["com_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links, 3),
+            com_shift = self.cfg["com_shift_scale"] * torch.randn(self.scene.n_envs, env.get_robot().n_links, 3),
             link_indices=np.arange(0, self.get_robot().n_links),
         )
 

@@ -30,7 +30,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     with open(f"{log_dir}/train_cfg.json", "r") as f:
         train_cfg = json.load(f)
 
-    env_cfg['resampling_time_s'] = 5
+    env_cfg['resampling_time_s'] = 3
     env_cfg['episode_length_s'] = 999
 
 
@@ -40,6 +40,16 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
         add_camera=do_record,
         show_viewer=show_viewer,
     )
+    # env.get_robot().set_friction(1e-2)
+    # env.get_robot().set_mass_shift(
+    #     mass_shift = 0.1 * torch.rand(env.scene.n_envs, env.get_robot().n_links),
+    #     link_indices=np.arange(0, env.get_robot().n_links),
+    # )
+    # env.get_robot().set_COM_shift(
+    #     com_shift = 0.1 * torch.rand(env.scene.n_envs, env.get_robot().n_links, 3),
+    #     link_indices=np.arange(0, env.get_robot().n_links),
+    # )
+
 
     if checkpoint == -1:
         # Find highest checkpoint number
@@ -113,6 +123,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "intui2__g0.995_l0.9_n64_2025-03-25_17-22-12"
+    exp_name = "intui2torque_2025-03-26_23-05-09"
     
-    rock_eval(exp_name, checkpoint=-1)
+    rock_eval(exp_name, checkpoint=150)

@@ -164,20 +164,6 @@ class RockEnv:
         print("damping after", self.get_robot().get_dofs_damping())
         self.get_robot().set_dofs_force_range([-self.cfg["max_torque"]], [self.cfg["max_torque"]], self.motor_dofs)
 
-        #domain randomization
-        self.get_robot().set_friction_ratio(
-            friction_ratio=self.cfg["friction_range"][0] + (self.cfg["friction_range"][1] - self.cfg["friction_range"][0]) * torch.rand(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
-        )
-        self.get_robot().set_mass_shift(
-            mass_shift = self.cfg["mass_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
-        )
-        self.get_robot().set_COM_shift(
-            com_shift = self.cfg["com_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links, 3),
-            link_indices=np.arange(0, self.get_robot().n_links),
-        )
-
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
         for name in self.reward_scales.keys():

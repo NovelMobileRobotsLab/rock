@@ -16,7 +16,7 @@ lambda_values = [0.8, 0.9, 0.95, 0.99]  # GAE lambda values
 num_steps_values = [24, 48, 64, 96]  # Rollout length values
 
 # Default parameters
-learning_iterations = 300
+learning_iterations = 1000
 seed = 1
 num_envs = 4096
 
@@ -54,7 +54,7 @@ base_train_cfg = {
     "policy": {
         "activation": "elu",
         "actor_hidden_dims": [512, 256, 128],
-        "critic_hidden_dims": [512, 256, 128],
+        "critic_hidden_dims": [512, 256, 128, 128, 128, 128],
         "init_noise_std": 1.0,
     },
     "runner": {
@@ -103,7 +103,7 @@ def run_training(params_dict):
         first_letter = param_name[0]
         
         # Add to experiment name
-        param_str += f"_{first_letter}{param_value}"
+        param_str += f"{first_letter}{param_value}"
         
         # Apply parameter based on the config type
         if parts[0] == "train":
@@ -118,7 +118,8 @@ def run_training(params_dict):
     
     # Create experiment name with parameter values
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    exp_name = f"intui2_{param_str}_{timestamp}"
+    # exp_name = f"intui2torque_{param_str}_{timestamp}"
+    exp_name = f"intui2torquerand_{timestamp}"
     train_cfg["runner"]["experiment_name"] = exp_name
     
     # Print parameter summary
@@ -149,10 +150,10 @@ def run_training(params_dict):
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    last_run = 'intui2__g0.995_l0.9_n64_2025-03-25_17-11-20'
-    ckpt = 300
-    runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
-    runner.current_learning_iteration = ckpt
+    # last_run = 'intui2torquerand_2025-03-26_22-59-13'
+    # ckpt = 100
+    # runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    # runner.current_learning_iteration = ckpt
 
     try:
         runner.learn(learning_iterations, init_at_random_ep_len=True)

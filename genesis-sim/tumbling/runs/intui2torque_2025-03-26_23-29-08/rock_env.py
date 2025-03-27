@@ -171,7 +171,7 @@ class RockEnv:
         )
         self.get_robot().set_mass_shift(
             mass_shift = self.cfg["mass_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
+            link_indices=np.arange(0, env.get_robot().n_links),
         )
         self.get_robot().set_COM_shift(
             com_shift = self.cfg["com_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links, 3),

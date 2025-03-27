@@ -47,7 +47,7 @@ class RockEnv:
         "resampling_time_s": 4.0,
 
         "episode_length_s": 10.0,
-        "max_torque": 0.2, #Nm
+        "max_torque": 0.6,
         "max_motor_speed": 276, # 2640 rpm 
         
         "control_dt": 0.01,
@@ -163,20 +163,6 @@ class RockEnv:
         self.get_robot().set_dofs_damping((0,), dofs_idx_local=self.motor_dofs)
         print("damping after", self.get_robot().get_dofs_damping())
         self.get_robot().set_dofs_force_range([-self.cfg["max_torque"]], [self.cfg["max_torque"]], self.motor_dofs)
-
-        #domain randomization
-        self.get_robot().set_friction_ratio(
-            friction_ratio=self.cfg["friction_range"][0] + (self.cfg["friction_range"][1] - self.cfg["friction_range"][0]) * torch.rand(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
-        )
-        self.get_robot().set_mass_shift(
-            mass_shift = self.cfg["mass_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links),
-            link_indices=np.arange(0, self.get_robot().n_links),
-        )
-        self.get_robot().set_COM_shift(
-            com_shift = self.cfg["com_shift_scale"] * torch.randn(self.scene.n_envs, self.get_robot().n_links, 3),
-            link_indices=np.arange(0, self.get_robot().n_links),
-        )
 
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
