@@ -21,7 +21,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     # gs.init(logging_level='info')
     torch.no_grad()
 
-    log_dir = f"{RockEnv.SIM_DIR}/runs/{run_name}"
+    log_dir = f"{RockEnv.SIM_DIR}/penaltysweep/{run_name}"
 
     if env_cfg is None:
         with open(f"{log_dir}/env_cfg.json", "r") as f:
@@ -60,6 +60,9 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
         checkpoint_numbers = [int(f.split("_")[1].split(".")[0]) for f in model_files]
         checkpoint = max(checkpoint_numbers)
 
+    output_filename = f"{log_dir}/eval_ckpt{checkpoint}"
+
+
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=env.device)
     runner.load(f"{log_dir}/models/model_{checkpoint}.pt")
     policy = runner.get_inference_policy(device=env.device)
@@ -70,10 +73,27 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
     if do_record:
         env.cam.start_recording()
 
+    if do_log:
+        log_file = open(output_filename+".csv", "w")
+        log_file.write("i")
+        for n in range(7):
+            log_file.write(f",pos{n}")
+        for n in range(7):
+            log_file.write(f",vel{n}")
+        log_file.write(",action")
+        for n in range(env.cfg["num_obs_per_step"]):
+            log_file.write(f",obs{n}")
+        log_file.write("\n")
+
     with torch.no_grad():
         for i in range(2000): # doubled number of steps from 1000 to 2000
             actions = policy(obs)
             # actions = torch.ones((1,1))
+
+            if i%400 > 0 and i%400 < 50:
+                actions = actions*0
+
+
             obs, _, rews, dones, infos = env.step(actions)
 
 
@@ -109,20 +129,31 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 env.cam.render()
                 env.scene.clear_debug_objects()
 
+            if do_log:
+                log_file.write(f"{i}")
+                for dof_pos in env.get_robot().get_dofs_position()[0].flatten().cpu().numpy():
+                    log_file.write(f",{dof_pos}")
+                for dof_vel in env.get_robot().get_dofs_velocity()[0].flatten().cpu().numpy():
+                    log_file.write(f",{dof_vel}")
+                log_file.write(f",{action[0]}")
+                obs_last = obs[0].reshape((env.cfg["num_obs_per_step"], env.cfg["num_obs_hist"]))[:,0].flatten().cpu().numpy()
+                for obs_single in obs_last:
+                    log_file.write(f",{obs_single}")
+                log_file.write("\n")
 
-            # if i % 200 == 0:
-            #         env.resample_commands()
+
+
 
             if i % 10 == 0:
                 print(i)
                 print(float(dof_vel), float(action), env._reward_regularize())
 
-        env.cam.stop_recording(f"{log_dir}/eval_ckpt{checkpoint}.mp4", fps=int(0.5 * 1/env.control_dt)) 
+        env.cam.stop_recording(output_filename+".mp4", fps=int(0.5 * 1/env.control_dt)) 
             
 
 
 if __name__ == "__main__":
 
-    exp_name = "intui2torque_2025-03-26_23-05-09"
+    exp_name = "intui2torquerand_s1m0.7r10r1_2025-03-27_11-34-55"
     
-    rock_eval(exp_name, checkpoint=150)
+    rock_eval(exp_name, checkpoint=-1, do_log=True)

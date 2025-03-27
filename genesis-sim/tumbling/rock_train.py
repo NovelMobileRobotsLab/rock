@@ -16,7 +16,7 @@ lambda_values = [0.8, 0.9, 0.95, 0.99]  # GAE lambda values
 num_steps_values = [24, 48, 64, 96]  # Rollout length values
 
 # Default parameters
-learning_iterations = 1000
+learning_iterations = 450
 seed = 1
 num_envs = 4096
 
@@ -26,8 +26,8 @@ base_train_cfg = {
         "clip_param": 0.2,
         "desired_kl": 0.01,
         "entropy_coef": 0.01,
-        "gamma": 0.99,  # Default value, will be overridden in parameter sweep
-        "lam": 0.9,     # Default value, will be overridden in parameter sweep
+        "gamma": 0.995,  # Default value, will be overridden in parameter sweep
+        "lam": 0.90,     # Default value, will be overridden in parameter sweep
         "learning_rate": 0.001,
         "max_grad_norm": 1.0,
         "num_learning_epochs": 5,
@@ -52,9 +52,9 @@ base_train_cfg = {
     # },
     "init_member_classes": {},
     "policy": {
-        "activation": "elu",
+        "activation": "relu",
         "actor_hidden_dims": [512, 256, 128],
-        "critic_hidden_dims": [512, 256, 128, 128, 128, 128],
+        "critic_hidden_dims": [512, 256, 128],
         "init_noise_std": 1.0,
     },
     "runner": {
@@ -119,7 +119,7 @@ def run_training(params_dict):
     # Create experiment name with parameter values
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # exp_name = f"intui2torque_{param_str}_{timestamp}"
-    exp_name = f"intui2torquerand_{timestamp}"
+    exp_name = f"intui2torquerand_{param_str}_{timestamp}"
     train_cfg["runner"]["experiment_name"] = exp_name
     
     # Print parameter summary
@@ -127,7 +127,7 @@ def run_training(params_dict):
     for key, value in params_dict.items():
         print(f"  {key} = {value}")
     
-    run_dir = f"{RockEnv.SIM_DIR}/runs/{exp_name}"
+    run_dir = f"{RockEnv.SIM_DIR}/penaltysweep/{exp_name}"
     os.makedirs(run_dir, exist_ok=True)
 
     # save environment config to file
@@ -150,10 +150,10 @@ def run_training(params_dict):
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    # last_run = 'intui2torquerand_2025-03-26_22-59-13'
-    # ckpt = 100
-    # runner.load(f'{RockEnv.SIM_DIR}/runs/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
-    # runner.current_learning_iteration = ckpt
+    last_run = 'intui2torquerand_s1m0.7r10r1_2025-03-27_11-34-55'
+    ckpt = 2150
+    runner.load(f'{RockEnv.SIM_DIR}/penaltysweep/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    runner.current_learning_iteration = ckpt
 
     try:
         runner.learn(learning_iterations, init_at_random_ep_len=True)
@@ -177,13 +177,26 @@ def run_training(params_dict):
 
 
 if __name__ == "__main__":
-    # Example 1: Single run with default gamma, lambda, and num_steps_per_env values
+    # # Example 1: Single run with default gamma, lambda, and num_steps_per_env values
     params = {
-        "train:algorithm:gamma": 0.995,
-        "train:algorithm:lam": 0.90,
-        "train:runner:num_steps_per_env": 64
+        "seed": 1,
+        "env:misalignment_penalty": 0.7,
+        "env:reward_scales:regularize": 10,
+        "env:resampling_time_s": 1,
     }
     run_training(params)
+
+    # for seed in [1,2]:
+    #     for misalignment_penalty in [0.2, 0.5, 0.8]:
+    #         for regularize in [2, 5, 10]:
+    #             for resampling_time_s in [1,3]:
+    #                 params = {
+    #                     "seed": seed,
+    #                     "env:misalignment_penalty": misalignment_penalty,
+    #                     "env:reward_scales:regularize": regularize,
+    #                     "env:resampling_time_s": resampling_time_s,
+    #                 }
+    #                 run_training(params)
     
     # Example 2: Sweeping across gamma and lambda values only
     """

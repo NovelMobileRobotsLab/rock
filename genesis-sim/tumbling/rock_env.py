@@ -27,6 +27,7 @@ class RockEnv:
             "regularize": 5,
             "direction": 100.0,
             # "tracking_lin_vel": 1.0,
+            "action_rate": 0.01,
         },
         "misalignment_penalty": 0.5,
 
@@ -44,7 +45,7 @@ class RockEnv:
         "base_init_quat": [0.7071068 ,0, 0.7071068, 0],#[1., 0., 0., 0.], #rotate rock 90 so it is on its side
 
 
-        "resampling_time_s": 4.0,
+        "resampling_time_s": 3.0,
 
         "episode_length_s": 10.0,
         "max_torque": 0.2, #Nm
@@ -218,6 +219,7 @@ class RockEnv:
 
 
     def step(self, actions):
+        self.last_actions = self.actions
         self.actions = torch.clip(actions, -1, 1)
         motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
         torques = self.cfg["max_torque"]*(self.actions - motor_speed / self.cfg["max_motor_speed"])
@@ -419,6 +421,7 @@ class RockEnv:
         misaligned_vel = torch.abs(torch.sum(self.commands[:, :2] * rotated_vel[:, :2], dim=1))
 
         # misaligned_vel = torch.abs(global_lin_vel - aligned_vel)
+        aligned_vel = torch.clip(aligned_vel, min=-torch.inf, max=1)
         
         return aligned_vel - self.cfg["misalignment_penalty"]*misaligned_vel
     
@@ -445,9 +448,9 @@ class RockEnv:
     #     lin_vel_error = torch.sum(torch.square(self.commands[:, 1] - self.base_lin_vel[:, 1]), dim=1)
     #     return torch.exp(-lin_vel_error / self.reward_cfg["tracking_sigma"])
     
-    # def _reward_action_rate(self):
-    #     # Penalize changes in actions, encourages going towards the same action that provides the best reward
-    #     return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
+    def _reward_action_rate(self):
+        # Penalize changes in actions, encourages going towards the same action that provides the best reward
+        return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
     
     # def _reward_tracking_ang_vel(self):
     #     # Tracking of angular velocity commands (yaw)
