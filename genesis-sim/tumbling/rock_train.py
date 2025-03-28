@@ -150,8 +150,8 @@ def run_training(params_dict):
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    last_run = 'intui2torquerand_s1m0.7r10r1_2025-03-27_11-34-55'
-    ckpt = 2150
+    last_run = 'intui2torquerand_s1m0.5r10r1_2025-03-27_10-14-23'
+    ckpt = 900
     runner.load(f'{RockEnv.SIM_DIR}/penaltysweep/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
     runner.current_learning_iteration = ckpt
 

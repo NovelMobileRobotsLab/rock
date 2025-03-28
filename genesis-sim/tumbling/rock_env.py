@@ -27,7 +27,7 @@ class RockEnv:
             "regularize": 5,
             "direction": 100.0,
             # "tracking_lin_vel": 1.0,
-            "action_rate": 0.01,
+            "action_rate": 1,
         },
         "misalignment_penalty": 0.5,
 
@@ -450,7 +450,7 @@ class RockEnv:
     
     def _reward_action_rate(self):
         # Penalize changes in actions, encourages going towards the same action that provides the best reward
-        return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
+        return -torch.sum(torch.square(self.last_actions - self.actions), dim=1)
     
     # def _reward_tracking_ang_vel(self):
     #     # Tracking of angular velocity commands (yaw)
