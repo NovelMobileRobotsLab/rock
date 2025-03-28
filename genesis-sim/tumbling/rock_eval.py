@@ -154,6 +154,6 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 if __name__ == "__main__":
 
-    exp_name = "intui2torquerand_s1m0.7r10r1_2025-03-27_11-34-55"
+    exp_name = "intui2torquerand_s1m0.7r10r1_2025-03-27_14-44-41"
     
     rock_eval(exp_name, checkpoint=-1, do_log=True)

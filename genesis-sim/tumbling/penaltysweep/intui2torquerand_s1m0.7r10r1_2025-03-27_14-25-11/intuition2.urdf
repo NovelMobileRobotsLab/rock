@@ -1,0 +1,324 @@
+<?xml version="1.0" ?>
+<robot name="intuition2">
+  <link name="shell_1">
+    <visual name="shell_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell_1.stl"/>
+      </geometry>
+      <material name="shell_1-material">
+        <color rgba="0 0 1 0.2"/>
+      </material>
+    </visual>
+    <collision name="shell_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.08628523"/>
+      <inertia ixx="0.00015035763" iyy="0.00022974227" izz="0.00015127784" ixy="2.2881457e-06" ixz="6.3485404e-07" iyz="2.4925917e-06"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="pendulum_1">
+    <visual name="pendulum_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+      <material name="pendulum_1-material">
+        <color rgba="1 1 0 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="pendulum_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulum_1.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.0071673613"/>
+      <inertia ixx="1.7166551e-06" iyy="2.0945342e-06" izz="3.0079635e-06" ixy="9.7125441e-13" ixz="3.1462099e-07" iyz="1.152783e-12"/>
+      <origin xyz="-0.037231809 3.3807232e-08 0.0041113786" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="shell2_1">
+    <visual name="shell2_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell2_1.stl"/>
+      </geometry>
+      <material name="shell2_1-material">
+        <color rgba="1 0 0 0.2"/>
+      </material>
+    </visual>
+    <collision name="shell2_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/shell2_1.stl"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.0862734"/>
+      <inertia ixx="0.00015033089" iyy="0.00015125497" izz="0.00022971627" ixy="-6.2591226e-07" ixz="2.2823868e-06" iyz="-2.5055845e-06"/>
+      <origin xyz="-0.0024150986 0.00074215619 0.045164647" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="IQ2306_Simplified_1">
+    <visual name="IQ2306_Simplified_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/IQ2306_Simplified_1.stl"/>
+      </geometry>
+      <material name="IQ2306_Simplified_1-material">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="IQ2306_Simplified_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/IQ2306_Simplified_1.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.0374"/>
+      <inertia ixx="3.12877e-06" iyy="3.1731684e-06" izz="3.6323314e-06" ixy="-3.6536544e-09" ixz="1.7745299e-08" iyz="-2.2598499e-12"/>
+      <origin xyz="8.2184387e-05 -9.4618498e-09 -0.015058897" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="leadestimation_1">
+    <visual name="leadestimation_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/leadestimation_1.stl"/>
+      </geometry>
+      <material name="leadestimation_1-material">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="leadestimation_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/leadestimation_1.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.13856077"/>
+      <inertia ixx="2.5003304e-05" iyy="7.9678038e-06" izz="2.1175891e-05" ixy="0" ixz="0" iyz="0"/>
+      <origin xyz="-0.0012493151 -0.015 -0.0113" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="2x3_battery_pack_1_SUB_tattu_220mah_battery_1">
+    <visual name="2x3_battery_pack_1_SUB_tattu_220mah_battery_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_1.stl"/>
+      </geometry>
+      <material name="2x3_battery_pack_1_SUB_tattu_220mah_battery_1-material">
+        <color rgba="1 0.5 0 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="2x3_battery_pack_1_SUB_tattu_220mah_battery_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_1.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.006"/>
+      <inertia ixx="1.2794722e-06" iyy="1.3180285e-06" izz="7.0975361e-08" ixy="0" ixz="0" iyz="1.9064659e-08"/>
+      <origin xyz="-0.006 0.00069753431 -0.024411653" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="pendulumcap_1">
+    <visual name="pendulumcap_1_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulumcap_1.stl"/>
+      </geometry>
+      <material name="pendulumcap_1-material">
+        <color rgba="1 0 0.5 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="pendulumcap_1_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/pendulumcap_1.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.0015467673"/>
+      <inertia ixx="2.4712971e-07" iyy="3.6445559e-08" izz="2.8142381e-07" ixy="0" ixz="-5.8823535e-11" iyz="0"/>
+      <origin xyz="0.00017410324 4.8227019e-18 -0.00032712916" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="2x3_battery_pack_1_SUB_tattu_220mah_battery_2">
+    <visual name="2x3_battery_pack_1_SUB_tattu_220mah_battery_2_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_2.stl"/>
+      </geometry>
+      <material name="2x3_battery_pack_1_SUB_tattu_220mah_battery_2-material">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="2x3_battery_pack_1_SUB_tattu_220mah_battery_2_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_2.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.006"/>
+      <inertia ixx="1.2794722e-06" iyy="7.0975361e-08" izz="1.3180285e-06" ixy="0" ixz="0" iyz="-1.9064659e-08"/>
+      <origin xyz="0.006 0.024411653 0.0041975343" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="2x3_battery_pack_1_SUB_tattu_220mah_battery_6">
+    <visual name="2x3_battery_pack_1_SUB_tattu_220mah_battery_6_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_6.stl"/>
+      </geometry>
+      <material name="2x3_battery_pack_1_SUB_tattu_220mah_battery_6-material">
+        <color rgba="1 0 1 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="2x3_battery_pack_1_SUB_tattu_220mah_battery_6_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_6.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.006"/>
+      <inertia ixx="1.2794722e-06" iyy="7.0975361e-08" izz="1.3180285e-06" ixy="0" ixz="0" iyz="-1.9064659e-08"/>
+      <origin xyz="0.006 0.024411653 -0.0018024657" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="2x3_battery_pack_1_SUB_tattu_220mah_battery_4">
+    <visual name="2x3_battery_pack_1_SUB_tattu_220mah_battery_4_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_4.stl"/>
+      </geometry>
+      <material name="2x3_battery_pack_1_SUB_tattu_220mah_battery_4-material">
+        <color rgba="0 1 1 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="2x3_battery_pack_1_SUB_tattu_220mah_battery_4_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_4.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.006"/>
+      <inertia ixx="1.3180285e-06" iyy="7.0975361e-08" izz="1.2794722e-06" ixy="-1.9064659e-08" ixz="0" iyz="0"/>
+      <origin xyz="0.00069753431 0.020661653 -0.006" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="2x3_battery_pack_1_SUB_tattu_220mah_battery_5">
+    <visual name="2x3_battery_pack_1_SUB_tattu_220mah_battery_5_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_5.stl"/>
+      </geometry>
+      <material name="2x3_battery_pack_1_SUB_tattu_220mah_battery_5-material">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="2x3_battery_pack_1_SUB_tattu_220mah_battery_5_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_5.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.006"/>
+      <inertia ixx="1.2794722e-06" iyy="7.0975361e-08" izz="1.3180285e-06" ixy="0" ixz="0" iyz="-1.9064659e-08"/>
+      <origin xyz="0.006 0.024411653 0.0041975343" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <link name="2x3_battery_pack_1_SUB_tattu_220mah_battery_3">
+    <visual name="2x3_battery_pack_1_SUB_tattu_220mah_battery_3_visual">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_3.stl"/>
+      </geometry>
+      <material name="2x3_battery_pack_1_SUB_tattu_220mah_battery_3-material">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <!-- <collision name="2x3_battery_pack_1_SUB_tattu_220mah_battery_3_collision">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="meshes/2x3_battery_pack_1_SUB_tattu_220mah_battery_3.stl"/>
+      </geometry>
+    </collision> -->
+    <inertial>
+      <mass value="0.006"/>
+      <inertia ixx="1.2794722e-06" iyy="7.0975361e-08" izz="1.3180285e-06" ixy="0" ixz="0" iyz="-1.9064659e-08"/>
+      <origin xyz="0.006 0.024411653 -0.0018024657" rpy="0 0 0"/>
+    </inertial>
+  </link>
+  <joint name="Revolute_1" type="revolute">
+    <origin xyz="-0.0024110692 0.021160973 -0.00075220053" rpy="-1.5707963 0 0"/>
+    <parent link="shell_1"/>
+    <child link="pendulum_1"/>
+    <axis xyz="0 0 -1"/>
+    <limit effort="1" velocity="1" lower="-6.2831853" upper="6.2831853"/>
+  </joint>
+  <joint name="Fastened_3" type="fixed">
+    <origin xyz="-0.0024110692 0.021160973 -0.00075220053" rpy="-1.5707963 0 0"/>
+    <parent link="shell_1"/>
+    <child link="shell2_1"/>
+  </joint>
+  <joint name="Fastened_5" type="fixed">
+    <origin xyz="-0.0024110692 0.021160973 -0.00075220053" rpy="-1.5707963 0 0"/>
+    <parent link="shell_1"/>
+    <child link="IQ2306_Simplified_1"/>
+  </joint>
+  <joint name="Fastened_1" type="fixed">
+    <origin xyz="-0.04348563 -0.015 -0.0026" rpy="3.1415927 0 0"/>
+    <parent link="pendulum_1"/>
+    <child link="leadestimation_1"/>
+  </joint>
+  <joint name="Fastened_4" type="fixed">
+    <origin xyz="0 0 0.012" rpy="3.1415927 0 0"/>
+    <parent link="shell2_1"/>
+    <child link="2x3_battery_pack_1_SUB_tattu_220mah_battery_1"/>
+  </joint>
+  <joint name="Fastened_2" type="fixed">
+    <origin xyz="-0.0012493151 -0.015 -0.0226" rpy="0 0 0"/>
+    <parent link="leadestimation_1"/>
+    <child link="pendulumcap_1"/>
+  </joint>
+  <joint name="bat1" type="fixed">
+    <origin xyz="-0.012 0.0025 0" rpy="-1.5707963 0 0"/>
+    <parent link="2x3_battery_pack_1_SUB_tattu_220mah_battery_1"/>
+    <child link="2x3_battery_pack_1_SUB_tattu_220mah_battery_2"/>
+  </joint>
+  <joint name="bat2" type="fixed">
+    <origin xyz="-0.012 -0.0035 0" rpy="-1.5707963 0 0"/>
+    <parent link="2x3_battery_pack_1_SUB_tattu_220mah_battery_1"/>
+    <child link="2x3_battery_pack_1_SUB_tattu_220mah_battery_6"/>
+  </joint>
+  <joint name="bat5" type="fixed">
+    <origin xyz="0 1.0842022e-19 -0.00375" rpy="-1.5707963 0 1.5707963"/>
+    <parent link="2x3_battery_pack_1_SUB_tattu_220mah_battery_1"/>
+    <child link="2x3_battery_pack_1_SUB_tattu_220mah_battery_4"/>
+  </joint>
+  <joint name="bat3" type="fixed">
+    <origin xyz="0.0025 -0.00375 0" rpy="-0 1.5707963 0"/>
+    <parent link="2x3_battery_pack_1_SUB_tattu_220mah_battery_4"/>
+    <child link="2x3_battery_pack_1_SUB_tattu_220mah_battery_5"/>
+  </joint>
+  <joint name="bat4" type="fixed">
+    <origin xyz="-0.0035 -0.00375 8.6736174e-19" rpy="-0 1.5707963 0"/>
+    <parent link="2x3_battery_pack_1_SUB_tattu_220mah_battery_4"/>
+    <child link="2x3_battery_pack_1_SUB_tattu_220mah_battery_3"/>
+  </joint>
+</robot>
