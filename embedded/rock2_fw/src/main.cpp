@@ -184,7 +184,7 @@
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #define TAG "main"
-
+#define INPUT_SIZE 48
 
 
 
@@ -333,29 +333,62 @@ void setup() {
 
 }
 
-// int f0 = 4096; //ranges from 0 to 8192, 4096 is center
-// int m0 = 0; // 0: voltage control, 1: angle control
 
-int cmdx = 0;
-int cmdy = 0;
+float input_scale = 0.12579839;
+int input_zero_pt = 3;
+float output_scale = 0.48779645562171936;
+int output_zero_pt = -29;
+
+int cmdx = 4096;
+int cmdy = 4096;
 int run0 = 0;
 long dt = 0;
 
+float ctrl_volt_filt = 0;
+
+float obs[INPUT_SIZE] = {0};
+float new_obs[16] = {0};
+
+float action = 0;
 
 void loop() {
 
+    new_obs[0] = action; // last action
 
-    float battery_voltage = 0;
-    ser.get(power.volts_, battery_voltage);
+    new_obs[1] = 0; // quat[0]
+    new_obs[2] = 0; // quat[1]
+    new_obs[3] = 0; // quat[2]
+    new_obs[4] = 0; // quat[3]
 
-    // float angle_deg = (cmdx - 4096) / 4096.0f * 2*PI;
-    // ser.set(angle.ctrl_angle_, angle_deg);
-    float ctrl_vel = (cmdy - 4096) / 4096.0f * 50.0f;
-    if (abs(ctrl_vel) < 5.0f) {
-        ctrl_vel = 0.0f;
+    new_obs[5] = 0; // angvel[0]/6
+    new_obs[6] = 0; // angvel[1]/6
+    new_obs[7] = 0; // angvel[2]/6 (rad/s)
+
+    new_obs[8] = 0; // linvel[0]*10
+    new_obs[9] = 0; // linvel[0]*10
+    new_obs[10] = 0; // linvel[0]*10 (m/s)
+
+    new_obs[11] = 0; // dofvel/50 (rad/s)
+    new_obs[12] = 0; // dofpos/10 (radians)
+
+    new_obs[13] = 0; // command[0]
+    new_obs[14] = 0; // command[1]
+    new_obs[15] = 0; // command[2]
+
+    //shift observations one up
+    for (int i = 1; i < INPUT_SIZE; i++){
+        obs[i] = obs[i-1]; 
     }
-    ser.set(angle.ctrl_velocity_, ctrl_vel);
+    for (int i = 0; i < INPUT_SIZE; i+=3){
+        obs[i] = new_obs[i/3];
+    }
 
+
+    // Εvaluate neural net
+    TfLiteTensor *input = interpreter->input(0);
+    for (int i = 0; i < INPUT_SIZE; i++){
+        input->data.int8[i] = int8_t(constrain(round(obs[i] / input_scale + input_zero_pt), -128, 127));
+    }
     long start = micros();
     if (interpreter->Invoke() == kTfLiteOk){
         Serial.printf("Invoke in: %d microseconds\n", micros() - start);
@@ -363,6 +396,32 @@ void loop() {
         Serial.printf("Invoke failed!\n");
         return;
     }
+    int8_t output_int = interpreter->output(0)->data.int8[0];
+    float output_float = constrain((output_int - output_zero_pt) * output_scale, -1.0f, 1.0f);
+
+
+
+    // Communicate with motor
+    float battery_voltage = 0;
+    ser.get(power.volts_, battery_voltage);
+
+
+    if (run0 == 1) {
+        float volt_alpha = 0.1;
+        ctrl_volt_filt = (1-volt_alpha) * ctrl_volt_filt + (volt_alpha) * output_float * 12.0f;
+        // float angle_deg = (cmdx - 4096) / 4096.0f * 2*PI;
+        // ser.set(angle.ctrl_angle_, angle_deg);
+        ser.set(angle.ctrl_volts_, ctrl_volt_filt);
+    }else{
+        // float angle_deg = (cmdx - 4096) / 4096.0f * 2*PI;
+        // ser.set(angle.ctrl_angle_, angle_deg);
+        float ctrl_vel = (cmdy - 4096) / 4096.0f * 50.0f;
+        if (abs(ctrl_vel) < 5.0f) {
+            ctrl_vel = 0.0f;
+        }
+        ser.set(angle.ctrl_velocity_, ctrl_vel);
+    }
+    
 
 
     // ESP NOW receive and send
@@ -373,8 +432,10 @@ void loop() {
     }
     size_t send_str_size = sprintf(send_str,
         "v:%.2f\n"
+        "out:%f\n"
         ,
-        battery_voltage
+        battery_voltage,
+        output_float
     );
     esp_now_send(estop_mac_addr, (uint8_t *) send_str, send_str_size);
 
@@ -390,6 +451,7 @@ void loop() {
     Serial.printf("cmdx: %d\n", cmdx);
     Serial.printf("cmdy: %d\n", cmdy);
     Serial.printf("run0: %d\n", run0);
+    Serial.printf("output: %f\n", output_float);
     Serial.printf("\t\n");
 
     delay(1);
