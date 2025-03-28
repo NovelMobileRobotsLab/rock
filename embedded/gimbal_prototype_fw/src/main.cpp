@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Adafruit_BNO08x.h>
 #include <iq_module_communication.hpp>
 #include <esp_now.h>
 #include <WiFi.h>
@@ -56,28 +57,51 @@ void setup() {
     esp_now_add_peer(&peerInfo);
 }
 
-int f0 = 4096; //ranges from 0 to 8192, 4096 is center
-int m0 = 0; // 0: voltage control, 1: angle control
+// int f0 = 4096; //ranges from 0 to 8192, 4096 is center
+// int m0 = 0; // 0: voltage control, 1: angle control
+
+int cmdx = 0;
+int cmdy = 0;
+int run0 = 0;
+long dt = 0;
+
+
 void loop() {
 
 
     float battery_voltage = 0;
     ser.get(power.volts_, battery_voltage);
     
-    if (m0 == 0) {
-        // voltage control
-        float ctrl_voltage = (f0 - 4096) / 4096.0f * 7.4f;
-        ser.set(angle.ctrl_volts_, ctrl_voltage);
-    }else{
-        // angle control
-        float angle_deg = (f0 - 4096) / 4096.0f * 2*PI;
-        ser.set(angle.ctrl_angle_, angle_deg);
-    }
+    // if (m0 == 0) {
+    //     // voltage control
+    //     float ctrl_voltage = (f0 - 4096) / 4096.0f * 7.4f;
+    //     ser.set(angle.ctrl_volts_, ctrl_voltage);
+    // }else{
+    //     // angle control
+    //     float angle_deg = (f0 - 4096) / 4096.0f * 2*PI;
+    //     ser.set(angle.ctrl_angle_, angle_deg);
+    // }
+
+    // // ESP NOW receive and send
+    // if (receivedString.indexOf("f0") != -1) { // data exists
+    //     f0 = receivedString.substring(receivedString.indexOf("f0") + 3, receivedString.indexOf("f0") + 8).toInt();
+    //     m0 = receivedString.substring(receivedString.indexOf("m0") + 3, receivedString.indexOf("m0") + 8).toInt();
+    // }
+
+    
+    // size_t send_str_size = sprintf(send_str,
+    //     "v:%.2f\n"
+    //     ,
+    //     battery_voltage
+    // );
+    // esp_now_send(estop_mac_addr, (uint8_t *) send_str, send_str_size);
+
 
     // ESP NOW receive and send
-    if (receivedString.indexOf("f0") != -1) { // data exists
-        f0 = receivedString.substring(receivedString.indexOf("f0") + 3, receivedString.indexOf("f0") + 8).toInt();
-        m0 = receivedString.substring(receivedString.indexOf("m0") + 3, receivedString.indexOf("m0") + 8).toInt();
+    if (receivedString.indexOf("cmdx") != -1) { // data exists
+        cmdx = receivedString.substring(receivedString.indexOf("cmdx") + 5, receivedString.indexOf("cmdx") + 10).toInt();
+        cmdy = receivedString.substring(receivedString.indexOf("cmdy") + 5, receivedString.indexOf("cmdy") + 10).toInt();
+        run0 = receivedString.substring(receivedString.indexOf("run0") + 5, receivedString.indexOf("run0") + 10).toInt();
     }
     size_t send_str_size = sprintf(send_str,
         "v:%.2f\n"
@@ -85,6 +109,20 @@ void loop() {
         battery_voltage
     );
     esp_now_send(estop_mac_addr, (uint8_t *) send_str, send_str_size);
+
+    // Serial.printf("v:%.2f\n", battery_voltage);
+    // // Serial.printf("f0:%d m0:%d\n", f0, m0);
+
+    Serial.printf("dt: %d\n", dt);
+    // Serial.printf("status: %d\n", sensorValue.status);
+    // Serial.printf("yaw: %f\n", ypr.yaw);
+    // Serial.printf("pitch: %f\n", ypr.pitch);
+    // Serial.printf("roll: %f\n", ypr.roll);
+    Serial.printf("voltage: %f\n", battery_voltage);
+    Serial.printf("cmdx: %d\n", cmdx);
+    Serial.printf("cmdy: %d\n", cmdy);
+    Serial.printf("run0: %d\n", run0);
+    Serial.printf("\t\n");
 
     delay(1);
 }
