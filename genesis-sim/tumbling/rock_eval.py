@@ -74,12 +74,16 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
         env.cam.start_recording()
 
     if do_log:
-        log_file = open(output_filename+".csv", "w")
+        log_file = open(output_filename+"(2).csv", "w")
         log_file.write("i")
         for n in range(7):
             log_file.write(f",pos{n}")
         for n in range(7):
             log_file.write(f",vel{n}")
+        for n in range(4):
+            log_file.write(f",quat{n}")
+        for n in range(6):
+            log_file.write(f",acc{n}")
         log_file.write(",action")
         for n in range(env.cfg["num_obs_per_step"]):
             log_file.write(f",obs{n}")
@@ -130,11 +134,17 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 env.scene.clear_debug_objects()
 
             if do_log:
+
                 log_file.write(f"{i}")
                 for dof_pos in env.get_robot().get_dofs_position()[0].flatten().cpu().numpy():
                     log_file.write(f",{dof_pos}")
                 for dof_vel in env.get_robot().get_dofs_velocity()[0].flatten().cpu().numpy():
                     log_file.write(f",{dof_vel}")
+                for quat in env.get_robot().get_quat()[0].flatten().cpu().numpy():
+                    log_file.write(f", {quat}")
+                for i_d in range(6):
+                    acc_i = env.get_robot().solver.dofs_state[i_d,0].acc
+                    log_file.write(f", {acc_i}")
                 log_file.write(f",{action[0]}")
                 obs_last = obs[0].reshape((env.cfg["num_obs_per_step"], env.cfg["num_obs_hist"]))[:,0].flatten().cpu().numpy()
                 for obs_single in obs_last:
@@ -148,12 +158,13 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 print(i)
                 print(float(dof_vel), float(action), env._reward_regularize())
 
-        env.cam.stop_recording(output_filename+".mp4", fps=int(0.5 * 1/env.control_dt)) 
+        env.cam.stop_recording(output_filename+"(2).mp4", fps=int(0.5 * 1/env.control_dt)) 
             
 
 
 if __name__ == "__main__":
 
-    exp_name = "intui2torquerand_s1m0.7r10r1_2025-03-27_14-44-41"
+    # exp_name = "intui2torquerand_s1m0.7r10r1_2025-03-27_14-44-41" #action rate penalty
+    exp_name = "intui2torquerand_s1m0.7r10r1_2025-03-27_11-34-55" #good tracking, no action rate penalty
     
     rock_eval(exp_name, checkpoint=-1, do_log=True)

@@ -130,6 +130,7 @@ class RockEnv:
         if add_camera:
             self.cam = self.scene.add_camera(
                 res=(640, 480),
+                # res=(1920,1080),
                 pos=(2, 2, 2), #diag
                 # pos=(0.0, 0.0, 0.5), #on top
                 lookat=(0, 0, 0.1),
@@ -477,96 +478,108 @@ if __name__ == "__main__":
 
     print("Starting simulation")
     env.reset()
+
+    env.cam
     env.cam.start_recording()
     # env.cam_top.start_recording()
 
     robot = env.get_robot()
 
+    init_pos = torch.tensor([[0.0, 0.0, 1.0]], device=env.device).repeat(env.num_envs, 1)
 
-    robot.set_dofs_kp((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-    robot.set_dofs_kv((1,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-
-    print("armature before", robot.get_dofs_armature())
-    robot.set_dofs_armature((0,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-    print("armature after", robot.get_dofs_armature())
-
-    print("damping before", robot.get_dofs_damping())
-    robot.set_dofs_damping((0,), dofs_idx_local=env.motor_dofs, envs_idx=range(2))
-    print("damping after", robot.get_dofs_damping())
-
+    robot.set_pos(init_pos)
 
 
     for i in range(300):
         
-        obs, _, rews, dones, infos = env.step( 1 *torch.ones((env.num_envs,1), device=env.device))
+        obs, _, rews, dones, infos = env.step( 0.1*np.random.rand() *torch.ones((env.num_envs,1), device=env.device))
 
         if i % 10 == 0:
             print(i)
-            # print(obs[0])
-        print("control force")
-        print(robot.get_dofs_control_force()[0].flatten().cpu().numpy())
+
+        # print("control force")
+        # print(robot.get_dofs_control_force()[0].flatten().cpu().numpy())
         # print(robot.get_dofs_kp().cpu().numpy())
         # print(robot.get_dofs_kv().cpu().numpy())
         # print(robot.get_dofs_position()[0].flatten().cpu().numpy()[-1])
-        print("link inertial mass\n", robot.get_links_inertial_mass())
-        print("link invweight\n", robot.get_links_invweight())
+
 
         motorjoints = robot.joints[-1]
         # for joint in joints:
         #     print(joint)
 
-        massmats = robot.solver.mass_mat_inv.to_numpy()[:, :, 0]
-        # print("massmats", massmats.shape)
-        # print(np.diag(massmats))
-        if i == 0:
-            massmat_sum = massmats
-        else:
-            massmat_sum += massmats
-        if i == 299: 
-            print("massmat_avg", massmat_sum/300) 
-
-        ''' normal masses
-        massmats (7, 7)
-[   3.162    4.182    4.324 1589.795 1485.914 1471.903    9.887]
-massmat_avg [[ 3.897e+00 -5.845e-02  2.898e-01 -2.927e+00 -1.110e+00 -7.266e+00  3.119e-03]
- [-5.845e-02  3.711e+00 -5.736e-02  4.824e-01  2.894e+00 -1.461e+01 -1.435e-02]
- [ 2.898e-01 -5.736e-02  3.899e+00  1.207e+01  3.574e+00 -1.079e+01 -1.326e-02]
- [-2.927e+00  4.824e-01  1.207e+01  1.536e+03 -4.144e+01 -1.454e-01 -8.945e-02]
- [-1.110e+00  2.894e+00  3.574e+00 -4.144e+01  1.489e+03 -2.070e+01  3.030e+00]
- [-7.266e+00 -1.461e+01 -1.079e+01 -1.454e-01 -2.070e+01  1.529e+03 -3.311e-02]
- [ 3.119e-03 -1.435e-02 -1.326e-02 -8.945e-02  3.030e+00 -3.311e-02  9.887e+00]]
- 
- big pendulum a d interias:
- massmats (7, 7)
-[2.747 1.313 3.210 1.396e+03 1.246e+03 1.395, 9.882]
-massmat_avg [[ 2.435e+00  6.354e-02 -1.810e-01  4.711e+00  9.624e-01 -1.062e+01 -4.193e-03]
- [ 6.354e-02  2.609e+00  1.442e-02 -4.349e+00 -4.664e+00 -2.062e+00  2.015e-02]
- [-1.810e-01  1.442e-02  2.061e+00  2.647e+00  9.177e+00  5.152e+00 -4.051e-02]
- [ 4.711e+00 -4.349e+00  2.647e+00  1.402e+03 -3.601e+01 -1.911e+00 -8.967e-02]
- [ 9.624e-01 -4.664e+00  9.177e+00 -3.601e+01  1.246e+03 -1.777e+01  4.150e+00]
- [-1.062e+01 -2.062e+00  5.152e+00 -1.911e+00 -1.777e+01  1.390e+03 -3.346e-02]
- [-4.193e-03  2.015e-02 -4.051e-02 -8.967e-02  4.150e+00 -3.346e-02  9.882e+00]]
-
-
- big mass pendulum only:
- massmats (7, 7)
-[   2.846    2.354    2.335 1667.438 1283.549 1186.894    9.883]
-massmat_avg [[ 1.747e+00  1.281e-01  5.434e-01 -9.319e-01  2.576e+00 -4.552e+00 -1.317e-02]
- [ 1.281e-01  2.961e+00 -3.023e-01  6.369e+00 -2.617e+01  5.103e+00  1.222e-01]
- [ 5.434e-01 -3.023e-01  2.533e+00  2.490e+00  2.041e+01 -1.824e+00 -9.324e-02]
- [-9.319e-01  6.369e+00  2.490e+00  1.432e+03 -3.277e+01  1.111e-01 -1.104e-01]
- [ 2.576e+00 -2.617e+01  2.041e+01 -3.277e+01  1.289e+03 -2.072e+01  3.950e+00]
- [-4.552e+00  5.103e+00 -1.824e+00  1.111e-01 -2.072e+01  1.428e+03 -2.338e-02]
- [-1.317e-02  1.222e-01 -9.324e-02 -1.104e-01  3.950e+00 -2.338e-02  9.883e+00]]
- 
- '''
-        
 
         robot_pos = robot.get_pos()[0].flatten().cpu().numpy()
         robot_vel = robot.get_vel()[0].flatten().cpu().numpy()
+        robot_quat = robot.get_quat()[0].flatten().cpu().numpy()
+
+        dof_pos = env.get_robot().get_dofs_velocity()[0].flatten().cpu().numpy()
 
         
-        env.scene.draw_debug_arrow(pos=robot_pos, vec=env.commands[0].cpu()*0.3, color=(1,0,0,0.5))
+
+
+        lin_acc_global = np.zeros(3)
+        for i_d in range(3):
+            lin_acc_global[i_d] = robot.solver.dofs_state[i_d,0].acc
+        print("lin_acc_global")
+        print(lin_acc_global)
+
+
+
+        #create 4x4 transformatino matrix from root position and orientation
+        # Create 4x4 transformation matrix from position and quaternion
+        T_base = np.eye(4)
+        # Convert quaternion to 3x3 rotation matrix
+        qw, qx, qy, qz = robot_quat
+        T_base[:3,:3] = np.array([
+            [1-2*qy*qy-2*qz*qz, 2*qx*qy-2*qz*qw, 2*qx*qz+2*qy*qw],
+            [2*qx*qy+2*qz*qw, 1-2*qx*qx-2*qz*qz, 2*qy*qz-2*qx*qw],
+            [2*qx*qz-2*qy*qw, 2*qy*qz+2*qx*qw, 1-2*qx*qx-2*qy*qy]
+        ])
+        # Set translation
+        T_base[:3,3] = robot_pos
+
+        #vector from base to IMU
+        p_imu = np.array([-0.02989, 0.06366, -0.0032])
+        
+        # Create 4x4 transformation matrix from IMU position and rotation
+        T_imu_translate = np.eye(4)
+        T_imu_translate[:3,3] = p_imu   # Set translation vector
+
+
+        x_rot_imu = np.array([
+            [1, 0, 0],
+            [0, np.cos(PI), -np.sin(PI)],
+            [0, np.sin(PI), np.cos(PI)],
+        ])
+        z_rot_imu = np.array([
+            [np.cos(PI/2), -np.sin(PI/2), 0],
+            [np.sin(PI/2), np.cos(PI/2), 0],
+            [0, 0, 1]
+        ])
+        R_imu = x_rot_imu @ z_rot_imu
+        T_imu_rotate = np.eye(4)
+        T_imu_rotate[:3,:3] = R_imu  # Set rotation block
+        
+        # T_imu = T_imu_translate 
+
+        T_imu = T_base @ T_imu_translate @ T_imu_rotate
+
+        r_imu_base = np.linalg.inv(T_base) @ T_imu
+        r_imu_base = r_imu_base[:3, 3]  # Translation component
+
+        # print("T_base")
+        # print(T_base)
+        # print("T_imu")
+        # print(T_imu)
+        # print("r_imu_base")
+        # print(r_imu_base)
+
+
+        env.scene.draw_debug_frame(T=T_base, origin_size=0.005, axis_radius=0.002, axis_length=0.1)
+        env.scene.draw_debug_frame(T=T_imu, origin_size=0.005, axis_radius=0.002, axis_length=0.1)
+        # env.scene.draw_debug_arrow(pos=robot_pos, vec=env.commands[0].cpu()*0.3, color=(1,0,0,0.5))
+        env.scene.draw_debug_arrow(pos=robot_pos, vec=lin_acc_global*0.05, color=(1,0,0,0.5))
 
         offset_x = 0.0  # centered horizontally
         offset_y = -1.0 
