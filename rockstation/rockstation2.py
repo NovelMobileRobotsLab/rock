@@ -39,17 +39,21 @@ def main():
 
         cmdx = int(joy_data['rightx'] * 4096 + 4096)
         cmdy = int(joy_data['righty'] * 4096 + 4096)
+        leftx = int(joy_data['leftx'] * 4096 + 4096)
+        lefty = int(joy_data['lefty'] * 4096 + 4096)
         run0 = 1 if joy_data['rightbumper'] else 0
 
         # if "estopped:0" in message:
         #     run = 0
         try:
             if(telemetry['estopped'] == 1): run = 0
-        except:
-            print('nodata')
+        except Exception as e:
+            print('nodata', e)
         cmd_str = ""
         cmd_str += f"cmdx:{cmdx:05}\n"
         cmd_str += f"cmdy:{cmdy:05}\n"
+        cmd_str += f"leftx:{leftx:05}\n"
+        cmd_str += f"lefty:{lefty:05}\n"
         cmd_str += f"run0:{run0:05}\n"
         cmd_str += "#\t"
 

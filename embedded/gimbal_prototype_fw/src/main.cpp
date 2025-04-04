@@ -31,7 +31,8 @@ void setup() {
     setCpuFrequencyMhz(80);
 
 
-    Serial1.begin(115200, SERIAL_8N1, D1, D0);
+    // Serial1.begin(115200, SERIAL_8N1, D1, D0);
+    Serial1.begin(115200, SERIAL_8N1);
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(D2, OUTPUT);
     digitalWrite(D2, LOW); // ground reference for IQ motor
