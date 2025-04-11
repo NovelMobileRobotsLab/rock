@@ -10,7 +10,7 @@
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #define TAG "main"
-#define INPUT_SIZE 48
+#define INPUT_SIZE 15*3
 
 #include "util.h"
 
@@ -189,45 +189,54 @@ float v_origin[3] = {0,-1,0};
 float w_origin[3] = {-1,0,0};
 float d[3] = {1,0,0};
 
+float quat[4] = {1,0,0,0};
+float angvel[3] = {0};
+
 void loop() {
 
+    //set desired direction from joystick
+    float cmd_mag = sqrt(sq(mapf8192(cmdx)) + sq(mapf8192(cmdy))); //cmdx and cmdy are read from esp-now
+    if(cmd_mag > 0.5){
+        d[0] = mapf8192(cmdx) / cmd_mag;
+        d[1] = mapf8192(cmdy) / cmd_mag;
+    }
+
+    //read IMU
     if (bno08x.wasReset()) {
         Serial.print("sensor was reset ");
         setReports(reportType, reportIntervalUs);
     }
-
     if (bno08x.getSensorEvent(&sensorValue)) {
-        // in this demo only one report type will be received depending on FAST_MODE define (above)
-        switch (sensorValue.sensorId) {
-        case SH2_ARVR_STABILIZED_RV:
-            quaternionToEulerRV(&sensorValue.un.arvrStabilizedRV, &ypr, true);
-        case SH2_GYRO_INTEGRATED_RV:
-            // faster (more noise?)
-            quaternionToEulerGI(&sensorValue.un.gyroIntegratedRV, &ypr, true);
-            break;
-        }
+        quaternionToEulerRV(&sensorValue.un.arvrStabilizedRV, &ypr, true); //get roll pitch yaw angles
+        // quaternionToEulerGI(&sensorValue.un.gyroIntegratedRV, &ypr, true); // faster (more noise?)
+
+        quat[0] = sensorValue.un.arvrStabilizedRV.real;
+        quat[1] = sensorValue.un.arvrStabilizedRV.i;
+        quat[2] = sensorValue.un.arvrStabilizedRV.j;
+        quat[3] = sensorValue.un.arvrStabilizedRV.k;
+
+        angvel[0] = sensorValue.un.gyroscope.x;
+        angvel[1] = sensorValue.un.gyroscope.y;
+        angvel[2] = sensorValue.un.gyroscope.z;
+
         static long last = 0;
         long now = micros();
         dt = now - last;
         last = now;
     }
 
-    /*
-
+    
+    //fill observations vector
     new_obs[0] = action; // last action
 
-    new_obs[1] = 0; // quat[0]
-    new_obs[2] = 0; // quat[1]
-    new_obs[3] = 0; // quat[2]
-    new_obs[4] = 0; // quat[3]
+    new_obs[1] = quat[0]; // quat[0]
+    new_obs[2] = quat[1]; // quat[1]
+    new_obs[3] = quat[2]; // quat[2]
+    new_obs[4] = quat[3]; // quat[3]
 
-    new_obs[5] = 0; // angvel[0]/6
-    new_obs[6] = 0; // angvel[1]/6
-    new_obs[7] = 0; // angvel[2]/6 (rad/s)
-
-    new_obs[8] = 0; // linvel[0]*10
-    new_obs[9] = 0; // linvel[0]*10
-    new_obs[10] = 0; // linvel[0]*10 (m/s)
+    new_obs[5] = angvel[0]/6.0f; // angvel[0]/6
+    new_obs[6] = angvel[1]/6.0f; // angvel[1]/6
+    new_obs[7] = angvel[2]/6.0f; // angvel[2]/6 (rad/s)
 
     new_obs[11] = 0; // dofvel/50 (rad/s)
     new_obs[12] = 0; // dofpos/10 (radians)
@@ -236,7 +245,7 @@ void loop() {
     new_obs[14] = 0; // command[1]
     new_obs[15] = 0; // command[2]
 
-    //shift observations one up
+    //shift observation history one later
     for (int i = 1; i < INPUT_SIZE; i++){
         obs[i] = obs[i-1]; 
     }
@@ -244,7 +253,6 @@ void loop() {
         obs[i] = new_obs[i/3];
     }
 
-    
     // Εvaluate neural net
     TfLiteTensor *input = interpreter->input(0);
     for (int i = 0; i < INPUT_SIZE; i++){
@@ -259,7 +267,7 @@ void loop() {
     }
     int8_t output_int = interpreter->output(0)->data.int8[0];
     float output_float = constrain((output_int - output_zero_pt) * output_scale, -1.0f, 1.0f);
-    */
+    
     
 
     // Communicate with motor
@@ -269,16 +277,10 @@ void loop() {
     // float coil_temp = 0.0f; //doesn't work
     // ser.get(coil.t_coil_, coil_temp);
 
-    //set desired direction
-    float cmd_mag = sqrt(sq(mapf8192(cmdx)) + sq(mapf8192(cmdy)));
-    if(cmd_mag > 0.5){
-        d[0] = mapf8192(cmdx) / cmd_mag;
-        d[1] = mapf8192(cmdy) / cmd_mag;
-    }
 
 
-    float u[3] = {0};
-    float v[3] = {0};
+    float u[3] = {0}; //where pendulum points at motorangle=0
+    float v[3] = {0}; //perpendicular to u, on pendulum circle plane
     float w[3] = {0}; //motor axis
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, u_origin, u);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
