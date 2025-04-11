@@ -16,7 +16,8 @@ lambda_values = [0.8, 0.9, 0.95, 0.99]  # GAE lambda values
 num_steps_values = [24, 48, 64, 96]  # Rollout length values
 
 # Default parameters
-learning_iterations = 450
+# learning_iterations = 450
+learning_iterations = 1000
 seed = 1
 num_envs = 4096
 
@@ -119,7 +120,7 @@ def run_training(params_dict):
     # Create experiment name with parameter values
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # exp_name = f"intui2torque_{param_str}_{timestamp}"
-    exp_name = f"intui2torquerand_{param_str}_{timestamp}"
+    exp_name = f"sincosproj_{param_str}_{timestamp}"
     train_cfg["runner"]["experiment_name"] = exp_name
     
     # Print parameter summary
@@ -127,7 +128,7 @@ def run_training(params_dict):
     for key, value in params_dict.items():
         print(f"  {key} = {value}")
     
-    run_dir = f"{RockEnv.SIM_DIR}/penaltysweep/{exp_name}"
+    run_dir = f"{RockEnv.SIM_DIR}/projruns/{exp_name}"
     os.makedirs(run_dir, exist_ok=True)
 
     # save environment config to file
@@ -150,10 +151,10 @@ def run_training(params_dict):
     env = RockEnv(num_envs, env_cfg, add_camera=True)
     
     runner = OnPolicyRunner(env, train_cfg, f"{run_dir}/models", device=env.device)
-    last_run = 'intui2torquerand_s1m0.5r10r1_2025-03-27_10-14-23'
-    ckpt = 900
-    runner.load(f'{RockEnv.SIM_DIR}/penaltysweep/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
-    runner.current_learning_iteration = ckpt
+    # last_run = 'novelest_s1r3_2025-04-03_11-57-27'
+    # ckpt = 500
+    # runner.load(f'{RockEnv.SIM_DIR}/penaltysweep/{last_run}/models/model_{ckpt}.pt', load_optimizer=False)
+    # runner.current_learning_iteration = ckpt
 
     try:
         runner.learn(learning_iterations, init_at_random_ep_len=True)
@@ -177,14 +178,36 @@ def run_training(params_dict):
 
 
 if __name__ == "__main__":
-    # # Example 1: Single run with default gamma, lambda, and num_steps_per_env values
+
+
+    # for seed in [3,4,5,6,7]:
+    #     for resampling_time_s in [1,3,5]:
+    #         params = {
+    #             "seed": seed,
+    #             "env:resampling_time_s": resampling_time_s,
+    #         }
+    #         run_training(params)
+
     params = {
-        "seed": 1,
-        "env:misalignment_penalty": 0.7,
-        "env:reward_scales:regularize": 10,
-        "env:resampling_time_s": 1,
+        "seed": 5,
+        "env:resampling_time_s": 3,
     }
     run_training(params)
+
+
+    # for seed in [2]:
+    #     for misalignment_penalty in [0.5]:
+    #         for action_rate_penalty in [5]:
+    #             for regularization_rew in [1]:
+    #                 params = {
+    #                     "seed": seed,
+    #                     "env:misalignment_penalty": misalignment_penalty,
+    #                     "env:reward_scales:regularize": regularization_rew,
+    #                     "env:reward_scales:action_rate": action_rate_penalty,
+    #                     "env:resampling_time_s": 1,
+    #                 }
+    #                 run_training(params)
+
 
     # for seed in [1,2]:
     #     for misalignment_penalty in [0.2, 0.5, 0.8]:
