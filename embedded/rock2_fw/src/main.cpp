@@ -242,9 +242,19 @@ void loop() {
     //transform IMU angles to simulation frame by rotating 90º about Z axis
     angvel_sim[0] = angvel[1];
     angvel_sim[1] = angvel[0];
-    angvel_sim[2] = -angvel[2];
+    angvel_sim[2] = -angvel[2];    
 
+    // transform IMU quarternions to global frame by multiplying quaternions by transformation quaternion
+    // {x, y, z, w}
+    float q1[4] = {quat[1], quat[2], quat[3], quat[0]};
+    float q2[4] = {0.7071068, 0.7071068, 0, 0} // static quaternion to transform sensor quat to global frame
 
+    float globalQuat[4] = rotateQuaternionbyQuaternion(q1, q2);
+    quat[0] = globalQuat[3]; // w
+    quat[1] = globalQuat[0]; // x
+    quat[2] = globalQuat[1]; // y
+    quat[3] = globalQuat[2]; // z
+    
     // Communicate with motor
     float mot_angle, mot_angvel, battery_voltage = 0;
     ser.get(angle.obs_angular_displacement_, mot_angle);
