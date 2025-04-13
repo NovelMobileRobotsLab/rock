@@ -4,7 +4,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-#include <model2150.h>
+#include <model_55_41_1000.h>
 #include <all_ops_resolver.h>
 #include "tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -87,7 +87,8 @@ void printModelInfo(){
 }
 
 
-float motor_zero = 0.266f; //radians
+// const float motor_zero = 0.266f; //radians
+const float motor_zero = 118*PI/180.0f; //radians
 
 void setup() {
     delay(1000);
@@ -139,7 +140,7 @@ void setup() {
     // model = tflite::GetModel(mnist_model);
     // model = tflite::GetModel(sin_model);
     // model = tflite::GetModel(sin_model_512);
-    model = tflite::GetModel(model2150);
+    model = tflite::GetModel(model_55_41_1000);
     if (model->version() != TFLITE_SCHEMA_VERSION){
         ESP_LOGE(TAG, "Model provided is schema version %d not equal to supported version %d.", model->version(), TFLITE_SCHEMA_VERSION);
         return;
@@ -166,10 +167,10 @@ void setup() {
     // 6
 
 
-float input_scale = 0.43216627836227417;
-int input_zero_pt = -25;
-float output_scale = 0.014200713485479355;
-int output_zero_pt = 6;
+float input_scale = 0.007843095809221268;
+int input_zero_pt = -1;
+float output_scale = 0.02356504090130329;
+int output_zero_pt = -24;
 
 int cmdx = 4096;
 int cmdy = 4096;
@@ -188,10 +189,17 @@ float new_obs[16] = {0};
 
 float action = 0;
 
+// // spiral rock
+// float u_origin[3] = {0,0,-1}; //corresponds to motor zero position
+// float v_origin[3] = {0,-1,0};
+// float w_origin[3] = {-1,0,0};
 
-float u_origin[3] = {0,0,-1}; //corresponds to motor zero position
-float v_origin[3] = {0,-1,0};
-float w_origin[3] = {-1,0,0};
+// potato rock
+float u_origin[3] = {0,0,-1}; // direction pendulum is pointing at motor zero position
+float v_origin[3] = {1,0,0}; // on pendulum plane, find using right hand rule
+float w_origin[3] = {0,-1,0}; //motor axis pointing outwards
+
+
 float d[3] = {1,0,0};
 
 float quat[4] = {1,0,0,0};
@@ -244,6 +252,10 @@ void loop() {
     ser.get(power.volts_, battery_voltage);
     battery_filt = (1-battery_lpf)*battery_filt + battery_lpf*battery_voltage;
 
+    float kp, kd = 0;
+    ser.get(angle.angle_Kp_, kp);
+    ser.get(angle.angle_Kd_, kd);
+
     // Compute projected pendulum angle
     float u[3] = {0}; //where pendulum points at motorangle=0
     float v[3] = {0}; //perpendicular to u, on pendulum circle plane
@@ -252,11 +264,11 @@ void loop() {
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, w_origin, w);
     float proj_angle = atan2f(-u[1]*d[0] + u[0]*d[1], v[1]*d[0]-v[0]*d[1]);
-    if(w[2]>0){
+    if(w[2]<0){
         proj_angle += PI;
     }
-    proj_angle = proj_angle - motor_zero;
-    proj_angle = proj_angle + 2*PI*round((mot_angle - proj_angle) / (2*PI));
+    float proj_angle_to_motor = proj_angle - motor_zero;
+    proj_angle_to_motor = proj_angle_to_motor + 2*PI*round((mot_angle - proj_angle_to_motor) / (2*PI));
 
 
     
@@ -268,19 +280,19 @@ void loop() {
     new_obs[3] = quat[2]; // quat[2]
     new_obs[4] = quat[3]; // quat[3]
 
-    new_obs[5] = angvel_sim[0]/6.0f; // angvel[0]/6        // IMU in simulation frame (rotated 90º about Z axis)
-    new_obs[6] = angvel_sim[1]/6.0f; // angvel[1]/6
-    new_obs[7] = angvel_sim[2]/6.0f; // angvel[2]/6 (rad/s)
+    new_obs[5] = angvel_sim[0]/24.0f; // angvel[0]/6        // IMU in simulation frame (rotated 90º about Z axis)
+    new_obs[6] = angvel_sim[1]/24.0f; // angvel[1]/6
+    new_obs[7] = angvel_sim[2]/12.0f; // angvel[2]/6 (rad/s)
 
-    new_obs[8] = mot_angvel / 50.0f; // dofvel/50 (rad/s)
+    new_obs[8] = mot_angvel / 37.5f; // dofvel/50 (rad/s)
     new_obs[9] = sin(mot_angle); // sin(mot_angle)
     new_obs[10] = cos(mot_angle); // cos(mot_angle)
 
     new_obs[11] = d[0]; // command[0]
     new_obs[12] = d[1]; // command[1]
-    new_obs[13] = 0; // command[2]
 
-    new_obs[14] = proj_angle; // proj_angle
+    new_obs[13] = sin(proj_angle);
+    new_obs[14] = cos(proj_angle);
 
     //shift observation history one later
     for (int i = INPUT_SIZE-1; i > 0; i--){
@@ -316,7 +328,13 @@ void loop() {
         if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
             ser.set(angle.ctrl_volts_, output_voltage);
         }else if(cmd_mag > 0.5){                                    //manual angle projection control
-            ser.set(angle.ctrl_angle_, proj_angle);
+            ser.set(angle.angle_Kp_, 5.0f);
+            ser.set(angle.angle_Kd_, 0.15f);
+            ser.set(angle.ctrl_angle_, proj_angle_to_motor);
+            // float kp = 4.0f;
+            // float v_proportional = constrain(kp*(proj_angle_to_motor - mot_angle), -12.0f, 12.0f);
+            // ser.set(angle.ctrl_volts_, v_proportional);
+
         }else if(abs(mapf8192(lefty)) > 0.2){                       //manual voltage control
             ser.set(angle.ctrl_volts_, mapf8192(lefty) * 12.0f);
         }else{
@@ -346,21 +364,29 @@ void loop() {
 
     Serial.printf("dt: %d\n", dt);
     // Serial.printf("status: %d\n", sensorValue.status);
-    Serial.printf("ypr: %f %f %f\n", ypr.yaw, ypr.pitch, ypr.roll);
+    // Serial.printf("ypr: %f %f %f\n", ypr.yaw, ypr.pitch, ypr.roll);
     Serial.printf("voltage: %f\n", battery_filt);
     Serial.printf("mot_angle: %f\n", mot_angle * RAD_TO_DEG);
+    // Serial.printf("mot_angle_zeroed: %f\n", (mot_angle+motor_zero) * RAD_TO_DEG);
     Serial.printf("u: %f %f %f\n", u[0], u[1], u[2]);
     Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
-    Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
+    Serial.printf("w: %f %f %f\n", w[0], w[1], w[2]);
+    // Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
     Serial.printf("d: %f %f\n", d[0], d[1]);
+    // Serial.printf("outint: %d\n", output_int);
     Serial.printf("V: %f\n", output_voltage);
-    Serial.printf("oint: %d\n", output_int);
+    // Serial.printf("kp: %f\n", kp);
+    // Serial.printf("kd: %f\n", kd);
 
-    for (int i = 0; i < INPUT_SIZE; i++){
-        // Serial.printf("%f ", obs[i]);
-        Serial.printf("%d ", input->data.int8[i]);
-    }
-    Serial.printf("\n");
+
+
+    // Serial.printf("oint: %d\n", output_int);
+
+    // for (int i = 0; i < INPUT_SIZE; i++){
+    //     // Serial.printf("%f ", obs[i]);
+    //     Serial.printf("%d ", input->data.int8[i]);
+    // }
+    // Serial.printf("\n");
 
 
 
@@ -371,5 +397,5 @@ void loop() {
     // Serial.printf("output: %f\n", output_float);
     Serial.printf("\t\n");
 
-    delay(5);
+    // delay(5);
 }

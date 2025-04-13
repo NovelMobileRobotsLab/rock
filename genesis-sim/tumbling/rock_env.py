@@ -332,8 +332,27 @@ class RockEnv:
         self.proj_angle = self.proj_angle - motor_zero
         self.proj_angle = self.proj_angle + 2.0*PI * torch.round((motor_angle - self.proj_angle) / (2.0*PI))
 
-        # print(self.get_robot().get_ang()[:,0].shape)
-        # print(torch.sin(motor_angle).shape)
+
+        angvel_global = self.get_robot().get_ang()
+        R_body_to_world = gs.quat_to_R(q_imu)
+        gs.inv_transform_by_quat
+        # R_imu.T @ R_body_to_world.T @ omega_world
+        angvel_imu = gs.transform_by_quat(self.base_ang_vel, q_imu)
+        
+
+
+        R_body_to_world = gs.quat_to_R(q_imu)         # shape (N, 3, 3)
+        R_world_to_body = R_body_to_world.transpose(1, 2) # shape (N, 3, 3)
+        # Step 2: Rotate omega_world to omega_body
+        omega_body = torch.bmm(R_world_to_body, angvel_global.unsqueeze(2)).squeeze(2)  # (N, 3)
+        # Step 3: Rotate omega_body to omega_imu using constant R_imu_mounting
+        R_imu_mounting = torch.tensor([
+            [0, -1, 0], 
+            [-1, 0, 0], 
+            [0, 0, -1]
+        ], device=self.device)
+        R_body_to_imu = R_imu_mounting.T                   # (3, 3)
+        omega_imu = torch.matmul(omega_body, R_body_to_imu.T)  # (N, 3)
 
 
         # compute observations
@@ -342,9 +361,9 @@ class RockEnv:
             torch.cat([
                 self.actions, # [0]
                 q_imu, # [1,2,3,4]
-                (self.get_robot().get_ang()[:,0]).reshape([self.num_envs,1]) / 24, # [5]
-                (self.get_robot().get_ang()[:,1]).reshape([self.num_envs,1]) / 24, # [6]
-                (self.get_robot().get_ang()[:,2]).reshape([self.num_envs,1]) / 12, # [7]
+                (omega_imu[:,0]).reshape([self.num_envs,1]) / 24, # [5]
+                (omega_imu[:,1]).reshape([self.num_envs,1]) / 24, # [6]
+                (omega_imu[:,2]).reshape([self.num_envs,1]) / 12, # [7]
                 self.get_robot().get_dofs_velocity(self.motor_dofs) / 37.5,  # [8]
                 torch.sin(motor_angle),  # [9]
                 torch.cos(motor_angle),  # [10]
