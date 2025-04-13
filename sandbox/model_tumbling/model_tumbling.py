@@ -216,6 +216,17 @@ target_slider = Slider(
     valstep=0.01,
 )
 
+# Add offset slider
+ax_offset = plt.axes([0.25, 0.1, 0.5, 0.03])
+offset_slider = Slider(
+    ax=ax_offset,
+    label='Offset',
+    valmin=-np.pi,
+    valmax=np.pi,
+    valinit=0,
+    valstep=0.01,
+)
+
 # Add target direction visualization
 target_dir = np.array([1, 0, 0])  # Initial direction along x-axis
 target_line, = ax.plot([0, target_dir[0]], [0, target_dir[1]], [-0.9, -0.9], 'y-', linewidth=2)
@@ -227,6 +238,7 @@ def update(val):
     phi = phi_slider.val
     zero_angle = zero_slider.val
     target_angle = target_slider.val
+    offset = offset_slider.val  # Get the offset value from the slider
     
     # Calculate the normal vector from spherical coordinates
     normal = np.array([
@@ -242,9 +254,20 @@ def update(val):
     
     # Calculate the angle needed for desired projection
     calculated_angle = get_angle_for_projection_direction(normal, zero_angle, target_dir[:2])
-    print(calculated_angle)
+    # print(calculated_angle)
 
-    rot_matrix = rotation_matrix_from_vectors(np.array([0, 0, 1]), normal)
+    # First get rotation matrix from z-axis to normal
+    rot_matrix_normal = rotation_matrix_from_vectors(np.array([0, 0, 1]), normal)
+    # Create rotation matrix about normal by zero_angle
+    c = np.cos(offset)
+    s = np.sin(offset)
+    rot_matrix_angle = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+    # Combine rotations: first rotate by angle, then rotate to normal
+    rot_matrix = rot_matrix_normal @ rot_matrix_angle
+
+
+
+
     unit_u = np.dot(np.array([1,0,0]), rot_matrix.T)
     unit_v = np.dot(np.array([0,1,0]), rot_matrix.T)
     unit_w = np.dot(np.array([0,0,1]), rot_matrix.T)
@@ -252,7 +275,12 @@ def update(val):
     if unit_w[2] < 0:
         analytical_angle += np.pi
     analytical_angle = (analytical_angle - zero_angle)%(2*np.pi)
-    print(analytical_angle)
+    print(f"analytical_angle: {analytical_angle}")
+    print(f"unit_u: {unit_u}")
+    print(f"unit_v: {unit_v}")
+    print(f"unit_w: {unit_w}")
+    print(f"d[0]: {target_dir[0]}")
+    print(f"d[1]: {target_dir[1]}")
     print("~~~~~~~~~~~")
 
 
@@ -268,14 +296,14 @@ def update(val):
     normal_line.set_3d_properties([0, normal[2]])
     
     # Update the zero position marker
-    zero_point = get_point_at_angle(normal, zero_angle, 0, radius)
+    zero_point = get_point_at_angle(normal, zero_angle+offset, 0, radius)
     zero_marker.set_data([0, zero_point[0]], [0, zero_point[1]])
     zero_marker.set_3d_properties([0, zero_point[2]])
     # zero_point_marker.set_data([zero_point[0]], [zero_point[1]])
     # zero_point_marker.set_3d_properties([zero_point[2]])
     
     # Update the angle position marker using calculated angle
-    angle_point = get_point_at_angle(normal, zero_angle, analytical_angle, radius)
+    angle_point = get_point_at_angle(normal, zero_angle+offset, analytical_angle, radius)
     angle_marker.set_data([0, angle_point[0]], [0, angle_point[1]])
     angle_marker.set_3d_properties([0, angle_point[2]])
     angle_point_marker.set_data([angle_point[0]], [angle_point[1]])
@@ -294,6 +322,7 @@ theta_slider.on_changed(update)
 phi_slider.on_changed(update)
 zero_slider.on_changed(update)
 target_slider.on_changed(update)
+offset_slider.on_changed(update)  # Connect the new slider
 # Remove the angle slider since we're now calculating it
 # ax_angle.remove()
 
@@ -306,6 +335,7 @@ def reset(event):
     phi_slider.reset()
     zero_slider.reset()
     target_slider.reset()
+    offset_slider.reset()  # Reset the new slider
 
 reset_button.on_clicked(reset)
 

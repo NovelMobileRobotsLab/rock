@@ -137,7 +137,10 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 robot_vel_plane = np.array([robot_vel[0], robot_vel[1], 0])
                 
                 if ((env.episode_length_buf[0] % 400) > 0) & ((env.episode_length_buf[0] % 400) <= 300):
-                    env.scene.draw_debug_arrow(pos=robot_pos, vec=env.commands[0].cpu()*0.3, color=(1,0,0,0.5)) 
+                    arrow_dir = np.zeros(3)
+                    arrow_dir[0] = env.commands[0].cpu()[0]
+                    arrow_dir[1] = env.commands[0].cpu()[1]
+                    env.scene.draw_debug_arrow(pos=robot_pos, vec=arrow_dir*0.3, color=(1,0,0,0.5)) 
                 env.scene.draw_debug_arrow(pos=robot_pos, vec=robot_vel_plane*0.3, color=(0,1,0,0.5))
                 env.cam.render()
                 env.scene.clear_debug_objects()
@@ -200,6 +203,6 @@ if __name__ == "__main__":
 
     np.random.seed(0)
     torch.random.manual_seed(0)
-    exp_name = "sincosproj_s5r3_2025-04-11_12-56-38"
-    rock_eval(exp_name, checkpoint=500, do_log=True)
+    exp_name = "sincosproj_s5r3_2025-04-12_22-55-41"
+    rock_eval(exp_name, checkpoint=1000, do_log=True)
 

@@ -17,7 +17,7 @@ class RockEnv:
         # "urdf_path": "../onshape/balo/balo.urdf", # fixed file path for new sim folders
         "urdf_path": "../onshape/intuition2/intuition2.urdf", 
 
-        "num_commands": 3,
+        "num_commands": 2, #x and y component of commanded direction
         "num_actions": 1, # angle of pendulum
 
         # "num_obs_per_step": 16, #with linvel
@@ -332,26 +332,30 @@ class RockEnv:
         self.proj_angle = self.proj_angle - motor_zero
         self.proj_angle = self.proj_angle + 2.0*PI * torch.round((motor_angle - self.proj_angle) / (2.0*PI))
 
+        # print(self.get_robot().get_ang()[:,0].shape)
+        # print(torch.sin(motor_angle).shape)
+
+
         # compute observations
         self.obs_stacked = torch.roll(self.obs_stacked, 1, dims=-1)     # shift obs 1 index later in hist dimension,
-        self.obs_stacked[:,:,0] =  torch.cat(
-            [
-                self.actions, # 1
-                # self.base_euler / 60, # 3
-                # self.base_lin_vel * 1e3,  # 3
-                # self.base_ang_vel,  # 3
-                q_imu, # 4
-                # self.get_robot().get_pos(), # 3
-                self.get_robot().get_ang() / 6,  # 3
-                # self.get_robot().get_vel() * 10,  # 3
-                self.get_robot().get_dofs_velocity(self.motor_dofs) / 50,  # 1
-                torch.sin(motor_angle),  # 1
-                torch.cos(motor_angle),  # 1
-                self.commands,  # 3
-                self.proj_angle,  # 1
-            ],
-            axis=-1
+        self.obs_stacked[:,:,0] =  torch.clip(
+            torch.cat([
+                self.actions, # [0]
+                q_imu, # [1,2,3,4]
+                (self.get_robot().get_ang()[:,0]).reshape([self.num_envs,1]) / 24, # [5]
+                (self.get_robot().get_ang()[:,1]).reshape([self.num_envs,1]) / 24, # [6]
+                (self.get_robot().get_ang()[:,2]).reshape([self.num_envs,1]) / 12, # [7]
+                self.get_robot().get_dofs_velocity(self.motor_dofs) / 37.5,  # [8]
+                torch.sin(motor_angle),  # [9]
+                torch.cos(motor_angle),  # [10]
+                self.commands,  # [11, 12]
+                torch.sin(self.proj_angle), # [13]
+                torch.cos(self.proj_angle), # [14]
+            ], axis=-1), 
+            min=-1, max=1,
         )
+
+        
 
     
         self.last_actions[:] = self.actions[:]
@@ -455,7 +459,7 @@ class RockEnv:
         direction = torch.rand(len(envs_idx), device=self.device) * 2 * PI
         self.commands[envs_idx, 0] = torch.cos(direction) # x-axis component
         self.commands[envs_idx, 1] = torch.sin(direction) # y-axis component
-        self.commands[envs_idx, 2] = 0 # z-axis component
+        # self.commands[envs_idx, 2] = 0 # z-axis component
 
 
     ''' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ REWARD FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ '''
