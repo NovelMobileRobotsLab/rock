@@ -41,7 +41,14 @@ def main():
         cmdy = int(joy_data['righty'] * 4096 + 4096)
         leftx = int(joy_data['leftx'] * 4096 + 4096)
         lefty = int(joy_data['lefty'] * 4096 + 4096)
-        run0 = 1 if joy_data['rightbumper'] else 0
+
+        run0 = 0
+        if joy_data['rightbumper']:
+            run0 += 1
+        if joy_data['leftbumper']:
+            run0 += 2
+
+        
 
         # if "estopped:0" in message:
         #     run = 0

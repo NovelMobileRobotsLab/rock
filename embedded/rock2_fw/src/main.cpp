@@ -160,11 +160,16 @@ void setup() {
 
 }
 
+//0.43216627836227417,
+    // -25
+    //0.014200713485479355,
+    // 6
 
-float input_scale = 0.12579839;
-int input_zero_pt = 3;
-float output_scale = 0.48779645562171936;
-int output_zero_pt = -29;
+
+float input_scale = 0.43216627836227417;
+int input_zero_pt = -25;
+float output_scale = 0.014200713485479355;
+int output_zero_pt = 6;
 
 int cmdx = 4096;
 int cmdy = 4096;
@@ -190,7 +195,8 @@ float w_origin[3] = {-1,0,0};
 float d[3] = {1,0,0};
 
 float quat[4] = {1,0,0,0};
-float angvel[3] = {0};
+float angvel[3] = {0}; //in IMU frame
+float angvel_sim[3] = {0}; //transformed to simulation frame
 
 void loop() {
 
@@ -225,60 +231,20 @@ void loop() {
         last = now;
     }
 
-    
-    //fill observations vector
-    new_obs[0] = action; // last action
+    //transform IMU angles to simulation frame by rotating 90º about Z axis
+    angvel_sim[0] = angvel[1];
+    angvel_sim[1] = angvel[0];
+    angvel_sim[2] = -angvel[2];
 
-    new_obs[1] = quat[0]; // quat[0]
-    new_obs[2] = quat[1]; // quat[1]
-    new_obs[3] = quat[2]; // quat[2]
-    new_obs[4] = quat[3]; // quat[3]
-
-    new_obs[5] = angvel[0]/6.0f; // angvel[0]/6
-    new_obs[6] = angvel[1]/6.0f; // angvel[1]/6
-    new_obs[7] = angvel[2]/6.0f; // angvel[2]/6 (rad/s)
-
-    new_obs[11] = 0; // dofvel/50 (rad/s)
-    new_obs[12] = 0; // dofpos/10 (radians)
-
-    new_obs[13] = 0; // command[0]
-    new_obs[14] = 0; // command[1]
-    new_obs[15] = 0; // command[2]
-
-    //shift observation history one later
-    for (int i = 1; i < INPUT_SIZE; i++){
-        obs[i] = obs[i-1]; 
-    }
-    for (int i = 0; i < INPUT_SIZE; i+=3){
-        obs[i] = new_obs[i/3];
-    }
-
-    // Εvaluate neural net
-    TfLiteTensor *input = interpreter->input(0);
-    for (int i = 0; i < INPUT_SIZE; i++){
-        input->data.int8[i] = int8_t(constrain(round(obs[i] / input_scale + input_zero_pt), -128, 127));
-    }
-    long start = micros();
-    if (interpreter->Invoke() == kTfLiteOk){
-        // Serial.printf("Invoke in: %d microseconds\n", micros() - start);
-    }else{
-        Serial.printf("Invoke failed!\n");
-        return;
-    }
-    int8_t output_int = interpreter->output(0)->data.int8[0];
-    float output_float = constrain((output_int - output_zero_pt) * output_scale, -1.0f, 1.0f);
-    
-    
 
     // Communicate with motor
-    float mot_angle = 0;
+    float mot_angle, mot_angvel, battery_voltage = 0;
     ser.get(angle.obs_angular_displacement_, mot_angle);
+    ser.get(angle.obs_angular_velocity_, mot_angvel);
+    ser.get(power.volts_, battery_voltage);
+    battery_filt = (1-battery_lpf)*battery_filt + battery_lpf*battery_voltage;
 
-    // float coil_temp = 0.0f; //doesn't work
-    // ser.get(coil.t_coil_, coil_temp);
-
-
-
+    // Compute projected pendulum angle
     float u[3] = {0}; //where pendulum points at motorangle=0
     float v[3] = {0}; //perpendicular to u, on pendulum circle plane
     float w[3] = {0}; //motor axis
@@ -293,16 +259,66 @@ void loop() {
     proj_angle = proj_angle + 2*PI*round((mot_angle - proj_angle) / (2*PI));
 
 
-    float battery_voltage = -1;
-    ser.get(power.volts_, battery_voltage);
-    battery_filt = (1-battery_lpf)*battery_filt + battery_lpf*battery_voltage;
+    
+    //fill observations vector
+    new_obs[0] = action; // last action
+
+    new_obs[1] = quat[0]; // quat[0] IMU in its own frame
+    new_obs[2] = quat[1]; // quat[1]
+    new_obs[3] = quat[2]; // quat[2]
+    new_obs[4] = quat[3]; // quat[3]
+
+    new_obs[5] = angvel_sim[0]/6.0f; // angvel[0]/6        // IMU in simulation frame (rotated 90º about Z axis)
+    new_obs[6] = angvel_sim[1]/6.0f; // angvel[1]/6
+    new_obs[7] = angvel_sim[2]/6.0f; // angvel[2]/6 (rad/s)
+
+    new_obs[8] = mot_angvel / 50.0f; // dofvel/50 (rad/s)
+    new_obs[9] = sin(mot_angle); // sin(mot_angle)
+    new_obs[10] = cos(mot_angle); // cos(mot_angle)
+
+    new_obs[11] = d[0]; // command[0]
+    new_obs[12] = d[1]; // command[1]
+    new_obs[13] = 0; // command[2]
+
+    new_obs[14] = proj_angle; // proj_angle
+
+    //shift observation history one later
+    for (int i = INPUT_SIZE-1; i > 0; i--){
+        obs[i] = obs[i-1];
+    }
+    for (int i = 0; i < INPUT_SIZE; i+=3){
+        obs[i] = new_obs[i/3];
+    }
+
+    // Εvaluate neural net
+    TfLiteTensor *input = interpreter->input(0);
+    for (int i = 0; i < INPUT_SIZE; i++){
+        // input->data.int8[i] = int8_t(constrain(round(obs[i] / input_scale + input_zero_pt), -128, 127));
+        input->data.int8[i] = int8_t(round(obs[i] / input_scale + input_zero_pt));
+    }
+    long start = micros();
+    if (interpreter->Invoke() == kTfLiteOk){
+        // Serial.printf("Invoke in: %d microseconds\n", micros() - start);
+    }else{
+        Serial.printf("Invoke failed!\n");
+        return;
+    }
+    int8_t output_int = interpreter->output(0)->data.int8[0];
+    action = (output_int - output_zero_pt) * output_scale;
+    float output_voltage = constrain(action, -1.0f, 1.0f) * 15.0f;
+    
+    
+
+    
 
 
-    if (battery_filt > 20 && run0 == 1){
-        if(abs(mapf8192(lefty)) > 0.2){
-            ser.set(angle.ctrl_volts_, mapf8192(lefty) * 12.0f);
-        }else if(cmd_mag > 0.5){
+    if (battery_filt > 20 && run0 > 0){
+        if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
+            ser.set(angle.ctrl_volts_, output_voltage);
+        }else if(cmd_mag > 0.5){                                    //manual angle projection control
             ser.set(angle.ctrl_angle_, proj_angle);
+        }else if(abs(mapf8192(lefty)) > 0.2){                       //manual voltage control
+            ser.set(angle.ctrl_volts_, mapf8192(lefty) * 12.0f);
         }else{
             ser.set(angle.ctrl_volts_, 0.0f);
         }
@@ -337,6 +353,18 @@ void loop() {
     Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
     Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
     Serial.printf("d: %f %f\n", d[0], d[1]);
+    Serial.printf("V: %f\n", output_voltage);
+    Serial.printf("oint: %d\n", output_int);
+
+    for (int i = 0; i < INPUT_SIZE; i++){
+        // Serial.printf("%f ", obs[i]);
+        Serial.printf("%d ", input->data.int8[i]);
+    }
+    Serial.printf("\n");
+
+
+
+    // Serial.printf("cmdx: %d\n", cmdx);
     // Serial.printf("temp: %f\n", coil_temp);
     // Serial.printf("cmdy: %d\n", cmdy);
     // Serial.printf("run0: %d\n", run0);
