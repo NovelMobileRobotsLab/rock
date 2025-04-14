@@ -203,6 +203,6 @@ if __name__ == "__main__":
 
     np.random.seed(0)
     torch.random.manual_seed(0)
-    exp_name = "sincosproj_s5r3_2025-04-12_22-55-41"
-    rock_eval(exp_name, checkpoint=1000, do_log=True)
+    exp_name = "sincosproj_s5r3_2025-04-13_17-17-11"
+    rock_eval(exp_name, checkpoint=450, do_log=True)
 

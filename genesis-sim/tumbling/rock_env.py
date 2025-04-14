@@ -316,54 +316,30 @@ class RockEnv:
 
         motor_angle = self.get_robot().get_dofs_position(self.motor_dofs)
 
-        q_offset = torch.tensor([0.7071, 0.0, 0.0, 0.7071], device=self.device).repeat(self.num_envs, 1) #90 degree rotation about z axis
-        u_orig = torch.tensor([0.,0.,-1.], device=self.device).repeat(self.num_envs, 1)
-        v_orig = torch.tensor([0.,-1.,0.], device=self.device).repeat(self.num_envs, 1)
-        w_orig = torch.tensor([-1.,0.,0.], device=self.device).repeat(self.num_envs, 1)
-        motor_zero = -PI/2
-        q_imu = self.quatmult(self.base_quat, q_offset)
-        u = gs.transform_by_quat(u_orig, q_imu)
-        v = gs.transform_by_quat(v_orig, q_imu)
-        w = gs.transform_by_quat(w_orig, q_imu)
+        # U, V, W in urdf frame
+        u_orig = torch.tensor([-1., 0., 0.], device=self.device).repeat(self.num_envs, 1) # zero position of motor, pointing towards IMU
+        v_orig = torch.tensor([0. ,0., 1.], device=self.device).repeat(self.num_envs, 1)  # perpendicular to u, pointing down relative to IMU
+        w_orig = torch.tensor([0. ,1., 0.], device=self.device).repeat(self.num_envs, 1) # out of the motor axis
+
+        #convert to local to global frame
+        u = gs.transform_by_quat(u_orig, self.base_quat) 
+        v = gs.transform_by_quat(v_orig, self.base_quat)
+        w = gs.transform_by_quat(w_orig, self.base_quat)
         d = self.commands
 
         self.proj_angle = torch.arctan2(-u[:,1]*d[:,0] + u[:,0]*d[:,1], v[:,1]*d[:,0]-v[:,0]*d[:,1]).reshape(self.num_envs, 1)
         self.proj_angle += (w[:, 2].reshape(self.num_envs, 1) < 0).float() * np.pi
-        self.proj_angle = self.proj_angle - motor_zero
         self.proj_angle = self.proj_angle + 2.0*PI * torch.round((motor_angle - self.proj_angle) / (2.0*PI))
-
-
-        angvel_global = self.get_robot().get_ang()
-        R_body_to_world = gs.quat_to_R(q_imu)
-        gs.inv_transform_by_quat
-        # R_imu.T @ R_body_to_world.T @ omega_world
-        angvel_imu = gs.transform_by_quat(self.base_ang_vel, q_imu)
-        
-
-
-        R_body_to_world = gs.quat_to_R(q_imu)         # shape (N, 3, 3)
-        R_world_to_body = R_body_to_world.transpose(1, 2) # shape (N, 3, 3)
-        # Step 2: Rotate omega_world to omega_body
-        omega_body = torch.bmm(R_world_to_body, angvel_global.unsqueeze(2)).squeeze(2)  # (N, 3)
-        # Step 3: Rotate omega_body to omega_imu using constant R_imu_mounting
-        R_imu_mounting = torch.tensor([
-            [0, -1, 0], 
-            [-1, 0, 0], 
-            [0, 0, -1]
-        ], device=self.device)
-        R_body_to_imu = R_imu_mounting.T                   # (3, 3)
-        omega_imu = torch.matmul(omega_body, R_body_to_imu.T)  # (N, 3)
-
 
         # compute observations
         self.obs_stacked = torch.roll(self.obs_stacked, 1, dims=-1)     # shift obs 1 index later in hist dimension,
         self.obs_stacked[:,:,0] =  torch.clip(
             torch.cat([
                 self.actions, # [0]
-                q_imu, # [1,2,3,4]
-                (omega_imu[:,0]).reshape([self.num_envs,1]) / 24, # [5]
-                (omega_imu[:,1]).reshape([self.num_envs,1]) / 24, # [6]
-                (omega_imu[:,2]).reshape([self.num_envs,1]) / 12, # [7]
+                self.base_quat, # [1,2,3,4]
+                (self.base_ang_vel[:,0]).reshape([self.num_envs,1]) / 12, # [5]
+                (self.base_ang_vel[:,1]).reshape([self.num_envs,1]) / 24, # [6] rolls on this axis 
+                (self.base_ang_vel[:,2]).reshape([self.num_envs,1]) / 12, # [7]
                 self.get_robot().get_dofs_velocity(self.motor_dofs) / 37.5,  # [8]
                 torch.sin(motor_angle),  # [9]
                 torch.cos(motor_angle),  # [10]
