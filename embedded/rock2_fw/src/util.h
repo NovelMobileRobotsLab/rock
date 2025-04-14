@@ -60,6 +60,17 @@ void rotateVectorByQuaternion(sh2_RotationVectorWAcc_t *quat, float v[3], float 
     r[2] = 2*((t7 - t3)*v[0] + (t2 + t9)*v[1] + (t5 + t8)*v[2]) + v[2];
 }
 
+float[4] rotateQuaternionbyQuaternion(float q1[4], float q2[4]){
+    // {x, y, z, w}
+    float[4] result;
+    // Calculate the components of the resulting quaternion
+    result[3] = q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2];
+    result[0] = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1];
+    result[1] = q1[3] * q2[1] - q1[0] * q2[2] + q1[1] * q2[3] + q1[2] * q2[0];
+    result[2] = q1[3] * q2[2] + q1[0] * q2[1] - q1[1] * q2[0] + q1[2] * q2[3];
+
+    return result;
+}
 
 float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -68,3 +79,4 @@ float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
 float mapf8192(float x) {
   return mapf(x, 0, 8192, -1, 1);
 }
+
