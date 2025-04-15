@@ -54,7 +54,7 @@ class RockEnv:
         "max_torque": 0.16, #Nm
         "max_motor_speed": 276, # 2640 rpm 
         
-        "control_dt": 0.01,
+        "control_dt": 0.012,
         "sim_steps_per_control": 10,
         "friction": 1,
         "gravity": [0, 0, -9.81], # normal gravity conditions
@@ -62,7 +62,7 @@ class RockEnv:
 
         "friction_range": [0.10, 1.00],
         "com_shift_scale": 0.01, #m
-        "mass_shift_scale": 0.010, #kg
+        "mass_shift_scale": 0.030, #kg
 
         "kv": 2.0,
     }

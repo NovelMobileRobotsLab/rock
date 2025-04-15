@@ -60,7 +60,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
         checkpoint_numbers = [int(f.split("_")[1].split(".")[0]) for f in model_files]
         checkpoint = max(checkpoint_numbers)
 
-    output_filename = f"{log_dir}/eval_ckpt{checkpoint}"
+    output_filename = f"{log_dir}/eval_ckpt{checkpoint}_s1"
 
 
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=env.device)
@@ -95,7 +95,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
 
 
     with torch.no_grad():
-        for i in range(2000): # doubled number of steps from 1000 to 2000
+        for i in range(4000): # doubled number of steps from 1000 to 2000
             actions = policy(obs)
             # actions = torch.ones((1,1))
 
@@ -201,8 +201,8 @@ if __name__ == "__main__":
     # exp_name = "sincosproj_s5r3_2025-04-09_06-13-40"
     # rock_eval(exp_name, checkpoint=500, do_log=True)
 
-    np.random.seed(0)
-    torch.random.manual_seed(0)
+    np.random.seed(1)
+    torch.random.manual_seed(1)
     exp_name = "velctrl_s5r3_2025-04-14_21-07-42"
     rock_eval(exp_name, checkpoint=-1, do_log=True)
 
