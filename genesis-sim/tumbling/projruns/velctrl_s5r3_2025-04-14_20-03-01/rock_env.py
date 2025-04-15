@@ -276,14 +276,11 @@ class RockEnv:
         # self.actions = self.actions_filt
 
         motor_speed_des = self.actions * 21.0 # about 200rpm
-
-        kv_tensor = torch.rand(self.num_envs, device=self.device) * 2.0 + 1.0  # Random values between 1 and 3
-        kv_tensor = kv_tensor.unsqueeze(1)
                 
         for i in range(self.cfg["sim_steps_per_control"]):
             motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
             max_volt = 15
-            voltage_ratio = torch.clip((motor_speed_des - motor_speed)*kv_tensor, -max_volt, max_volt) / max_volt
+            voltage_ratio = torch.clip((motor_speed_des - motor_speed)*self.cfg['kv'], -max_volt, max_volt) / max_volt
             torques = self.cfg["max_torque"]*(voltage_ratio - motor_speed / self.cfg["max_motor_speed"])
             self.get_robot().control_dofs_force(torques, self.motor_dofs)
 

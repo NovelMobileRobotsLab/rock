@@ -120,7 +120,7 @@ def run_training(params_dict):
     # Create experiment name with parameter values
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # exp_name = f"intui2torque_{param_str}_{timestamp}"
-    exp_name = f"sincosproj_{param_str}_{timestamp}"
+    exp_name = f"velctrl_{param_str}_{timestamp}"
     train_cfg["runner"]["experiment_name"] = exp_name
     
     # Print parameter summary

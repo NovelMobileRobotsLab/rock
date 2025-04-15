@@ -30,7 +30,6 @@ class RockEnv:
             "misalignment": 50,
             # "tracking_lin_vel": 1.0,
             "action_rate": 5,
-            "dof_vel_rate": 0.1
         },
         # "misalignment_penalty": 0.5,
 
@@ -64,7 +63,7 @@ class RockEnv:
         "com_shift_scale": 0.01, #m
         "mass_shift_scale": 0.010, #kg
 
-        "kv": 2.0,
+        "kv": 50.0,
     }
     
     def __init__(self, num_envs:int, env_cfg=None, show_viewer=False, add_camera=False, viewer_timescale=0.5, device="cuda"):
@@ -214,8 +213,6 @@ class RockEnv:
         self.commands = torch.zeros((self.num_envs, self.num_commands), device=self.device, dtype=gs.tc_float)
 
         self.actions = torch.zeros((self.num_envs, self.num_actions), device=self.device, dtype=gs.tc_float)
-        self.actions_filt = torch.zeros_like(self.actions)
-
         self.last_actions = torch.zeros_like(self.actions)
         self.dof_pos = torch.zeros_like(self.actions)
         self.dof_vel = torch.zeros_like(self.actions)
@@ -253,12 +250,9 @@ class RockEnv:
 
     
 
+
     def step(self, actions):
         self.last_actions = self.actions
-        self.last_dof_vel = self.dof_vel.clone()
-
-
-
         self.actions = torch.clip(actions, -1, 1)
 
         # if i%400 > 0 and i%400 < 50:
@@ -267,26 +261,23 @@ class RockEnv:
         # print(self.episode_length_buf, mask)
         # print(f"actions before: {self.actions}")
         # print(f"mask: {mask}")
-
         self.actions = self.actions*mask
         # print(f"actions after: {self.actions}")
+        
 
-        # actions_alpha = 0.6  # Smoothing factor
-        # self.actions_filt = self.actions_filt * actions_alpha + self.actions * (1 - actions_alpha)
-        # self.actions = self.actions_filt
+        motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
+        # torques = self.cfg["max_torque"]*(self.actions - motor_speed / self.cfg["max_motor_speed"])
+        # self.get_robot().control_dofs_force(torques, self.motor_dofs)
 
-        motor_speed_des = self.actions * 21.0 # about 200rpm
+        motor_speed_des = self.actions * self.cfg["max_motor_speed"]
+        self.get_robot().control_dofs_velocity(motor_speed_des, self.motor_dofs)
+        
+        # target_speed = torch.clip(self.actions, -1, 1) * self.cfg["max_motor_speed"]
+        # self.get_robot().control_dofs_velocity(target_speed, self.motor_dofs)
 
-        kv_tensor = torch.rand(self.num_envs, device=self.device) * 2.0 + 1.0  # Random values between 1 and 3
-        kv_tensor = kv_tensor.unsqueeze(1)
-                
+
+        
         for i in range(self.cfg["sim_steps_per_control"]):
-            motor_speed = self.get_robot().get_dofs_velocity(self.motor_dofs)
-            max_volt = 15
-            voltage_ratio = torch.clip((motor_speed_des - motor_speed)*kv_tensor, -max_volt, max_volt) / max_volt
-            torques = self.cfg["max_torque"]*(voltage_ratio - motor_speed / self.cfg["max_motor_speed"])
-            self.get_robot().control_dofs_force(torques, self.motor_dofs)
-
             self.scene.step()
 
         # update buffers
@@ -302,6 +293,7 @@ class RockEnv:
         self.dof_pos[:] = self.get_robot().get_dofs_position(self.motor_dofs)
         self.dof_vel[:] = self.get_robot().get_dofs_velocity(self.motor_dofs)
         
+
         # resample commands
         envs_idx_to_reset = (
             (self.episode_length_buf % int(self.cfg["resampling_time_s"] / self.control_dt) == 0)
@@ -372,8 +364,12 @@ class RockEnv:
             min=-1, max=1,
         )
 
-
         
+
+    
+        self.last_actions[:] = self.actions[:]
+        self.last_dof_vel[:] = self.dof_vel[:]
+
         return self.obs_stacked.flatten(1), None, self.rew_buf, self.reset_buf, self.extras
     
     def get_observations(self):
@@ -444,6 +440,7 @@ class RockEnv:
 
         # reset buffers
         self.last_actions[envs_idx] = 0.0
+        self.last_dof_vel[envs_idx] = 0.0
         self.episode_length_buf[envs_idx] = 0
         self.reset_buf[envs_idx] = True
 
@@ -480,7 +477,7 @@ class RockEnv:
     def _reward_direction(self):
         global_lin_vel = self.get_robot().get_vel()
         aligned_vel = torch.sum(self.commands[:, :2] * global_lin_vel[:, :2], dim=1)
-        aligned_vel = torch.clip(aligned_vel, min=-torch.inf, max=0.5)
+        aligned_vel = torch.clip(aligned_vel, min=-torch.inf, max=1)
         return aligned_vel
     
     def _reward_misalignment(self):
@@ -519,9 +516,6 @@ class RockEnv:
     def _reward_action_rate(self):
         # Penalize changes in actions, encourages going towards the same action that provides the best reward
         return -torch.sum(torch.square(self.last_actions - self.actions), dim=1)
-    
-    def _reward_dof_vel_rate(self):
-        return -torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1)
     
     # def _reward_tracking_ang_vel(self):
     #     # Tracking of angular velocity commands (yaw)
@@ -667,4 +661,3 @@ if __name__ == "__main__":
 
     env.cam.stop_recording(f"{RockEnv.SIM_DIR}/testfollow2.mp4", fps=30)
     # env.cam_top.stop_recording(f"{RockEnv.SIM_DIR}/testfollow_top.mp4", fps=30)
-

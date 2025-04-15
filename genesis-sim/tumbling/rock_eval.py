@@ -171,7 +171,7 @@ def rock_eval(run_name:str, env_cfg=None, checkpoint=-1, show_viewer=False, do_r
                 print(i)
                 print(float(dof_vel), float(action_np), env._reward_regularize())
 
-        env.cam.stop_recording(output_filename+"_2.mp4", fps=int(0.5 * 1/env.control_dt)) 
+        env.cam.stop_recording(output_filename+".mp4", fps=int(0.5 * 1/env.control_dt)) 
     
     del env
     del runner
@@ -203,6 +203,6 @@ if __name__ == "__main__":
 
     np.random.seed(0)
     torch.random.manual_seed(0)
-    exp_name = "sincosproj_s5r3_2025-04-13_17-17-11"
-    rock_eval(exp_name, checkpoint=450, do_log=True)
+    exp_name = "velctrl_s5r3_2025-04-14_21-07-42"
+    rock_eval(exp_name, checkpoint=-1, do_log=True)
 

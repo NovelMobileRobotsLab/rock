@@ -1,0 +1,51 @@
+{
+    "urdf_path": "../onshape/intuition2/intuition2.urdf",
+    "num_commands": 2,
+    "num_actions": 1,
+    "num_obs_per_step": 15,
+    "num_obs_hist": 3,
+    "reward_scales": {
+        "regularize": 2,
+        "direction": 100.0,
+        "misalignment": 50,
+        "action_rate": 5
+    },
+    "tracking_sigma": 0.1,
+    "dofs": {
+        "Revolute_1": 0.0
+    },
+    "base_init_pos": [
+        0.0,
+        0.0,
+        0.08
+    ],
+    "base_init_quat": [
+        0.7071068,
+        0,
+        0.7071068,
+        0
+    ],
+    "resampling_time_s": 3,
+    "episode_length_s": 10.0,
+    "max_torque": 0.16,
+    "max_motor_speed": 276,
+    "control_dt": 0.01,
+    "sim_steps_per_control": 10,
+    "friction": 1,
+    "gravity": [
+        0,
+        0,
+        -9.81
+    ],
+    "substeps": 2,
+    "friction_range": [
+        0.1,
+        1.0
+    ],
+    "com_shift_scale": 0.01,
+    "mass_shift_scale": 0.01,
+    "kv_range": [
+        50.0,
+        50.0
+    ]
+}
