@@ -120,7 +120,7 @@ def run_training(params_dict):
     # Create experiment name with parameter values
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     # exp_name = f"intui2torque_{param_str}_{timestamp}"
-    exp_name = f"velctrl_{param_str}_{timestamp}"
+    exp_name = f"velctrlter_{param_str}_{timestamp}"
     train_cfg["runner"]["experiment_name"] = exp_name
     
     # Print parameter summary
@@ -188,11 +188,13 @@ if __name__ == "__main__":
     #         }
     #         run_training(params)
 
-    params = {
-        "seed": 5,
-        "env:resampling_time_s": 3,
-    }
-    run_training(params)
+
+    for seed in [5,6,7,8,9]:
+        params = {
+            "seed": seed,
+            "env:resampling_time_s": 5,
+        }
+        run_training(params)
 
 
     # for seed in [2]:

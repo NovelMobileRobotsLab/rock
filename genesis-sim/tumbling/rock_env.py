@@ -25,12 +25,13 @@ class RockEnv:
         "num_obs_hist": 3,  # number of previous observations to include
 
         "reward_scales": {
-            "regularize": 2,
+            "regularize": 1,
             "direction": 100.0,
             "misalignment": 50,
             # "tracking_lin_vel": 1.0,
-            "action_rate": 5,
-            "dof_vel_rate": 0.1
+            "action_rate": 1,
+            "dof_vel_rate": 0.1,
+            "keep_rolling": 3,
         },
         # "misalignment_penalty": 0.5,
 
@@ -65,6 +66,9 @@ class RockEnv:
         "mass_shift_scale": 0.030, #kg
 
         "kv": 2.0,
+
+        # "terrain": "plane",
+        "terrain": "heightfield",
     }
     
     def __init__(self, num_envs:int, env_cfg=None, show_viewer=False, add_camera=False, viewer_timescale=0.5, device="cuda"):
@@ -117,11 +121,33 @@ class RockEnv:
             # ),
         )
 
-        # add plane
-        self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
+        if self.cfg["terrain"] == "heightfield":
+            horizontal_scale = 0.1
+            vertical_scale = 0.003
+            height_field = np.zeros([50, 50])
+            heights_range = np.arange(0, 11, 1)
+            height_field[:,:] = 1 + np.random.choice(heights_range, (50, 50))
+            ########################## entities ##########################
+            self.terrain = self.scene.add_entity(
+                morph=gs.morphs.Terrain(
+                    horizontal_scale=horizontal_scale,
+                    vertical_scale=vertical_scale,
+                    height_field=height_field,
+                    pos=(-2.5, -2.5, 0),
+                    # name="example",
+                    # from_stored=True,
+                ),
+            )
+        elif self.cfg["terrain"] == "plane":
+            self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
+
+
 
         # add get_robot
         self.base_init_pos = torch.tensor(self.cfg["base_init_pos"], device=self.device)
+        if self.cfg['terrain'] == 'heightfield':
+            self.base_init_pos[2] += 0.03 #raise so it doesn't intersect peaks
+
         self.base_init_quat = torch.tensor(self.cfg["base_init_quat"], device=self.device)
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
@@ -277,7 +303,7 @@ class RockEnv:
 
         motor_speed_des = self.actions * 21.0 # about 200rpm
 
-        kv_tensor = torch.rand(self.num_envs, device=self.device) * 2.0 + 1.0  # Random values between 1 and 3
+        kv_tensor = torch.rand(self.num_envs, device=self.device) * 2.0 + 2.0  # Random values between 2 and 4
         kv_tensor = kv_tensor.unsqueeze(1)
                 
         for i in range(self.cfg["sim_steps_per_control"]):
@@ -371,6 +397,12 @@ class RockEnv:
             ], axis=-1), 
             min=-1, max=1,
         )
+
+        if self.cfg['terrain'] == "heightfield":
+            bound = 2.5
+            envs_idx_to_zero = ((self.base_pos[:, 0] < -bound) | (self.base_pos[:, 0] > bound) | (self.base_pos[:, 1] < -bound) | (self.base_pos[:, 1] > bound)).nonzero(as_tuple=False).flatten()
+            if len(envs_idx_to_zero) > 0:
+                self.get_robot().set_pos(pos=(self.base_init_pos).repeat([len(envs_idx_to_zero), 1]), envs_idx=envs_idx_to_zero)
 
 
         
@@ -518,10 +550,13 @@ class RockEnv:
     
     def _reward_action_rate(self):
         # Penalize changes in actions, encourages going towards the same action that provides the best reward
-        return -torch.sum(torch.square(self.last_actions - self.actions), dim=1)
+        return -torch.sum(torch.square(self.last_actions - self.actions), dim=1) * torch.clip(torch.abs(self.base_ang_vel[:,1]), 0, 1)
     
     def _reward_dof_vel_rate(self):
-        return -torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1)
+        return -torch.sum(torch.square(self.last_dof_vel - self.dof_vel), dim=1) * torch.clip(torch.abs(self.base_ang_vel[:,1]), 0, 1)
+    
+    def _reward_keep_rolling(self):
+        return torch.clip(torch.abs(self.base_ang_vel[:,1]), 0, 1)
     
     # def _reward_tracking_ang_vel(self):
     #     # Tracking of angular velocity commands (yaw)
@@ -562,7 +597,7 @@ if __name__ == "__main__":
 
     for i in range(300):
         
-        obs, _, rews, dones, infos = env.step( 0.1*np.random.rand() *torch.ones((env.num_envs,1), device=env.device))
+        obs, _, rews, dones, infos = env.step( 1*np.random.rand() *torch.ones((env.num_envs,1), device=env.device))
 
         if i % 10 == 0:
             print(i)
