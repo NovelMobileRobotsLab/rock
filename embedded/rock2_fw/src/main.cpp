@@ -4,7 +4,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-#include <model_55_41_1000.h>
+#include <model_58_02_200.h>
 #include <all_ops_resolver.h>
 #include "tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -17,6 +17,11 @@
 #define BNO08X_CS 6
 #define BNO08X_INT 5
 #define BNO08X_RESET 1
+
+#define input_scale 0.007843082770705223f
+#define input_zero_pt -1
+#define output_scale 0.01251873467117548f
+#define output_zero_pt -14
 
 /*
     0: spiral rock
@@ -166,7 +171,7 @@ void setup() {
     // model = tflite::GetModel(mnist_model);
     // model = tflite::GetModel(sin_model);
     // model = tflite::GetModel(sin_model_512);
-    model = tflite::GetModel(model_55_41_1000);
+    model = tflite::GetModel(model_58_02_200);
     if (model->version() != TFLITE_SCHEMA_VERSION){
         ESP_LOGE(TAG, "Model provided is schema version %d not equal to supported version %d.", model->version(), TFLITE_SCHEMA_VERSION);
         return;
@@ -190,10 +195,7 @@ void setup() {
 
 }
 
-float input_scale = 0.007843095809221268;
-int input_zero_pt = -1;
-float output_scale = 0.02356504090130329;
-int output_zero_pt = -24;
+
 
 int cmdx = 4096;
 int cmdy = 4096;
@@ -335,17 +337,15 @@ void loop() {
     }
     int8_t output_int = interpreter->output(0)->data.int8[0];
     action = (output_int - output_zero_pt) * output_scale;
-    float output_voltage = constrain(action, -1.0f, 1.0f) * 15.0f;
-    
-    
     long time_nn = micros() - last;
     last = micros();
-    
 
+    float mot_vel_des = constrain(action, -1.0f, 1.0f) * 21.0f;
+    
 
     if (battery_filt > 20 && run0 > 0){
         if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
-            ser.set(angle.ctrl_volts_, output_voltage);
+            ser.set(angle.ctrl_velocity_, mot_vel_des);
         }else if(cmd_mag > 0.5){                                    //manual angle projection control
             
             ser.set(angle.ctrl_angle_, proj_angle_to_motor);
@@ -398,7 +398,7 @@ void loop() {
     // Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
     Serial.printf("d: %f %f\n", d[0], d[1]);
     // Serial.printf("outint: %d\n", output_int);
-    Serial.printf("V: %f\n", output_voltage);
+    Serial.printf("vel_des: %f\n", mot_vel_des);
 
     static long time_print = 0;
 
