@@ -9,17 +9,44 @@
 #include "tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/schema/schema_generated.h"
-#define TAG "main"
-#define INPUT_SIZE 15*3
 
 #include "util.h"
 
-
+#define TAG "main"
+#define INPUT_SIZE 15*3
 #define BNO08X_CS 6
 #define BNO08X_INT 5
 #define BNO08X_RESET 1
 
+/*
+    0: spiral rock
+    1: potato rock
+*/
+#define ROCK_ID 0
 
+
+/*
+motor_zero: what motor reports when pendulum is pointing in the direction of IMU position
+
+origin vectors are the pendulum U,V,W axes in the IMU frame
+U: direction pendulum is pointing at motor zero position
+V: on pendulum plane, find using right hand rule
+W: motor axis pointing outwards
+
+q_imu_to_global: {x, y, z, w} static quaternion to transform sensor quat_imu to global frame
+*/
+#if ROCK_ID == 0 // spiral rock
+    float motor_zero = -0.05235987755f; //radians
+    float u_origin[3] = {0,-1,0};
+    float v_origin[3] = {0,0,-1};
+    float w_origin[3] = {1,0,0};
+    float q_imu_to_global[4] = {0, 0.7071068, 0.7071068, 0}; //z axis inverted, x and y swap without negating
+#elif ROCK_ID == 1 // potato rock
+    float motor_zero = 180.0f * PI / 180.0f; //radians
+    float u_origin[3] = {0,0,-1}; //may need to update
+    float v_origin[3] = {1,0,0}; 
+    float w_origin[3] = {0,-1,0}; 
+#endif
 
 
 Adafruit_BNO08x bno08x(BNO08X_RESET);
@@ -87,17 +114,16 @@ void printModelInfo(){
 }
 
 
-// const float motor_zero = 0.266f; //radians
-const float motor_zero = 118*PI/180.0f; //radians
+
 
 void setup() {
     delay(1000);
 
-    setCpuFrequencyMhz(80);
+    setCpuFrequencyMhz(240);
     pinMode(LED_BUILTIN, OUTPUT);
 
     // Start Vertiq communication
-    Serial1.begin(115200, SERIAL_8N1, D2, D3);
+    Serial1.begin(921600, SERIAL_8N1, D2, D3);
     // Serial1.begin(115200, SERIAL_8N1, D1, D0); //old rock
     pinMode(D1, OUTPUT);
     digitalWrite(D1, LOW); // ground reference for IQ motor
@@ -158,14 +184,11 @@ void setup() {
     }
     printModelInfo();
 
+    ser.set(angle.angle_Kp_, 5.0f);
+    ser.set(angle.angle_Kd_, 0.15f);
+
 
 }
-
-//0.43216627836227417,
-    // -25
-    //0.014200713485479355,
-    // 6
-
 
 float input_scale = 0.007843095809221268;
 int input_zero_pt = -1;
@@ -189,24 +212,19 @@ float new_obs[16] = {0};
 
 float action = 0;
 
-// // spiral rock
-// float u_origin[3] = {0,0,-1}; //corresponds to motor zero position
-// float v_origin[3] = {0,-1,0};
-// float w_origin[3] = {-1,0,0};
-
-// potato rock
-float u_origin[3] = {0,0,-1}; // direction pendulum is pointing at motor zero position
-float v_origin[3] = {1,0,0}; // on pendulum plane, find using right hand rule
-float w_origin[3] = {0,-1,0}; //motor axis pointing outwards
 
 
-float d[3] = {1,0,0};
-
-float quat[4] = {1,0,0,0};
-float angvel[3] = {0}; //in IMU frame
-float angvel_sim[3] = {0}; //transformed to simulation frame
+float d[2] = {0, 1}; //desired direction initialized to forward
+float quat_imu[4]; //orientation quaternion
+float angvel_imu[3]; //in IMU frame
+float angvel_urdf[3]; //transformed to simulation frame
 
 void loop() {
+    //get dt
+    static long last = 0;
+    long now = micros();
+    dt = now - last;
+    last = now;
 
     //set desired direction from joystick
     float cmd_mag = sqrt(sq(mapf8192(cmdx)) + sq(mapf8192(cmdy))); //cmdx and cmdy are read from esp-now
@@ -215,7 +233,18 @@ void loop() {
         d[1] = mapf8192(cmdy) / cmd_mag;
     }
 
-    //read IMU
+    // Read data from motor
+    float mot_angle, mot_angvel, battery_voltage = 0;
+    ser.get(angle.obs_angular_displacement_, mot_angle);
+    mot_angle = mot_angle - motor_zero;
+    ser.get(angle.obs_angular_velocity_, mot_angvel);
+    ser.get(power.volts_, battery_voltage);
+    battery_filt = (1-battery_lpf)*battery_filt + battery_lpf*battery_voltage;
+
+    long time_mot_read = micros() - last;
+    last = micros();
+
+    // Read IMU
     if (bno08x.wasReset()) {
         Serial.print("sensor was reset ");
         setReports(reportType, reportIntervalUs);
@@ -224,75 +253,54 @@ void loop() {
         quaternionToEulerRV(&sensorValue.un.arvrStabilizedRV, &ypr, true); //get roll pitch yaw angles
         // quaternionToEulerGI(&sensorValue.un.gyroIntegratedRV, &ypr, true); // faster (more noise?)
 
-        quat[0] = sensorValue.un.arvrStabilizedRV.real;
-        quat[1] = sensorValue.un.arvrStabilizedRV.i;
-        quat[2] = sensorValue.un.arvrStabilizedRV.j;
-        quat[3] = sensorValue.un.arvrStabilizedRV.k;
+        quat_imu[0] = sensorValue.un.arvrStabilizedRV.real;
+        quat_imu[1] = sensorValue.un.arvrStabilizedRV.i;
+        quat_imu[2] = sensorValue.un.arvrStabilizedRV.j;
+        quat_imu[3] = sensorValue.un.arvrStabilizedRV.k;
 
-        angvel[0] = sensorValue.un.gyroscope.x;
-        angvel[1] = sensorValue.un.gyroscope.y;
-        angvel[2] = sensorValue.un.gyroscope.z;
-
-        static long last = 0;
-        long now = micros();
-        dt = now - last;
-        last = now;
+        angvel_imu[0] = sensorValue.un.gyroscope.x;
+        angvel_imu[1] = sensorValue.un.gyroscope.y;
+        angvel_imu[2] = sensorValue.un.gyroscope.z;
     }
 
-    //transform IMU angles to simulation frame by rotating 90º about Z axis
-    angvel_sim[0] = angvel[1];
-    angvel_sim[1] = angvel[0];
-    angvel_sim[2] = -angvel[2];    
+    long time_imu_read = micros() - last;
+    last = micros();
 
-    // transform IMU quarternions to global frame by multiplying quaternions by transformation quaternion
-    // {x, y, z, w}
-    float q1[4] = {quat[1], quat[2], quat[3], quat[0]};
-    float q2[4] = {0.7071068, 0.7071068, 0, 0} // static quaternion to transform sensor quat to global frame
-
-    float globalQuat[4] = rotateQuaternionbyQuaternion(q1, q2);
-    quat[0] = globalQuat[3]; // w
-    quat[1] = globalQuat[0]; // x
-    quat[2] = globalQuat[1]; // y
-    quat[3] = globalQuat[2]; // z
     
-    // Communicate with motor
-    float mot_angle, mot_angvel, battery_voltage = 0;
-    ser.get(angle.obs_angular_displacement_, mot_angle);
-    ser.get(angle.obs_angular_velocity_, mot_angvel);
-    ser.get(power.volts_, battery_voltage);
-    battery_filt = (1-battery_lpf)*battery_filt + battery_lpf*battery_voltage;
+    //transform IMU angular velocities to URDF frame by rotating 180º about X axis then -90º about Z axis
+    angvel_urdf[0] = angvel_imu[1];
+    angvel_urdf[1] = angvel_imu[0];
+    angvel_urdf[2] = -angvel_imu[2];    
 
-    float kp, kd = 0;
-    ser.get(angle.angle_Kp_, kp);
-    ser.get(angle.angle_Kd_, kd);
+    // transform IMU orientation quaternion to URDF frame by multiplying it by transformation quaternion
+    float quat_urdf[4];
+    rotateQuaternionbyQuaternion(quat_imu, q_imu_to_global, quat_urdf);
 
-    // Compute projected pendulum angle
-    float u[3] = {0}; //where pendulum points at motorangle=0
-    float v[3] = {0}; //perpendicular to u, on pendulum circle plane
-    float w[3] = {0}; //motor axis
-    rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, u_origin, u);
+    // Compute U,V,W of pendulum in global frame by rotating by IMU quaternion
+    float u[3]; //where pendulum points at motorangle=0, towards IMU
+    float v[3]; //perpendicular to u, on pendulum circle plane, y-axis of URDF
+    float w[3]; //motor axis out of motor
+    rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, u_origin, u); //writes to u
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, w_origin, w);
     float proj_angle = atan2f(-u[1]*d[0] + u[0]*d[1], v[1]*d[0]-v[0]*d[1]);
     if(w[2]<0){
         proj_angle += PI;
     }
-    float proj_angle_to_motor = proj_angle - motor_zero;
-    proj_angle_to_motor = proj_angle_to_motor + 2*PI*round((mot_angle - proj_angle_to_motor) / (2*PI));
+    float proj_angle_to_motor = proj_angle + 2*PI*round((mot_angle - proj_angle) / (2*PI)); //find closest rotation to proj_angle
 
 
-    
     //fill observations vector
     new_obs[0] = action; // last action
 
-    new_obs[1] = quat[0]; // quat[0] IMU in its own frame
-    new_obs[2] = quat[1]; // quat[1]
-    new_obs[3] = quat[2]; // quat[2]
-    new_obs[4] = quat[3]; // quat[3]
+    new_obs[1] = quat_imu[0]; // quat_imu[0] orientation in URDF frame
+    new_obs[2] = quat_imu[1]; // quat_imu[1]
+    new_obs[3] = quat_imu[2]; // quat_imu[2]
+    new_obs[4] = quat_imu[3]; // quat_imu[3]
 
-    new_obs[5] = angvel_sim[0]/24.0f; // angvel[0]/6        // IMU in simulation frame (rotated 90º about Z axis)
-    new_obs[6] = angvel_sim[1]/24.0f; // angvel[1]/6
-    new_obs[7] = angvel_sim[2]/12.0f; // angvel[2]/6 (rad/s)
+    new_obs[5] = angvel_urdf[0]/12.0f; // x-axis of URDF, pointing towards seeeduino, away from IMU
+    new_obs[6] = angvel_urdf[1]/24.0f; // y-axis of URDF, rolls on this axis usually
+    new_obs[7] = angvel_urdf[2]/12.0f; // z-axis of URDF, points down from IMU perspective
 
     new_obs[8] = mot_angvel / 37.5f; // dofvel/50 (rad/s)
     new_obs[9] = sin(mot_angle); // sin(mot_angle)
@@ -330,7 +338,8 @@ void loop() {
     float output_voltage = constrain(action, -1.0f, 1.0f) * 15.0f;
     
     
-
+    long time_nn = micros() - last;
+    last = micros();
     
 
 
@@ -338,8 +347,7 @@ void loop() {
         if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
             ser.set(angle.ctrl_volts_, output_voltage);
         }else if(cmd_mag > 0.5){                                    //manual angle projection control
-            ser.set(angle.angle_Kp_, 5.0f);
-            ser.set(angle.angle_Kd_, 0.15f);
+            
             ser.set(angle.ctrl_angle_, proj_angle_to_motor);
             // float kp = 4.0f;
             // float v_proportional = constrain(kp*(proj_angle_to_motor - mot_angle), -12.0f, 12.0f);
@@ -353,6 +361,10 @@ void loop() {
     }else{
         ser.set(angle.ctrl_volts_, 0.0f);
     }
+
+    long time_mot_set = micros() - last;
+    last = micros();
+
 
 
     // ESP NOW receive and send
@@ -370,25 +382,37 @@ void loop() {
     );
     esp_now_send(estop_mac_addr, (uint8_t *) send_str, send_str_size);
 
+    long time_espnow = micros() - last;
 
 
-    Serial.printf("dt: %d\n", dt);
+
+    // Serial.printf("dt: %d\n", dt);
     // Serial.printf("status: %d\n", sensorValue.status);
     // Serial.printf("ypr: %f %f %f\n", ypr.yaw, ypr.pitch, ypr.roll);
     Serial.printf("voltage: %f\n", battery_filt);
     Serial.printf("mot_angle: %f\n", mot_angle * RAD_TO_DEG);
     // Serial.printf("mot_angle_zeroed: %f\n", (mot_angle+motor_zero) * RAD_TO_DEG);
-    Serial.printf("u: %f %f %f\n", u[0], u[1], u[2]);
-    Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
-    Serial.printf("w: %f %f %f\n", w[0], w[1], w[2]);
+    // Serial.printf("u: %f %f %f\n", u[0], u[1], u[2]);
+    // Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
+    // Serial.printf("w: %f %f %f\n", w[0], w[1], w[2]);
     // Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
     Serial.printf("d: %f %f\n", d[0], d[1]);
     // Serial.printf("outint: %d\n", output_int);
     Serial.printf("V: %f\n", output_voltage);
+
+    static long time_print = 0;
+
+    Serial.printf("time_mot_read: %d\n", time_mot_read);
+    Serial.printf("time_imu_read: %d\n", time_imu_read);
+    Serial.printf("time_nn: %d\n", time_nn);
+    Serial.printf("time_mot_set: %d\n", time_mot_set);
+    Serial.printf("time_espnow: %d\n", time_espnow);
+    Serial.printf("time_print: %d\n", time_print);
+    Serial.printf("total: %d\n", time_mot_read+time_imu_read+time_nn+time_mot_set+time_espnow+time_print);
     // Serial.printf("kp: %f\n", kp);
     // Serial.printf("kd: %f\n", kd);
-
-
+    time_print = micros() - last;
+    last = micros();
 
     // Serial.printf("oint: %d\n", output_int);
 
