@@ -190,7 +190,10 @@ void setup() {
     printModelInfo();
 
     ser.set(angle.angle_Kp_, 5.0f);
+    // ser.set(angle.angle_Kp_, 10.0f);
+    
     ser.set(angle.angle_Kd_, 0.15f);
+    // ser.set(angle.angle_Kd_, 2.0f);
 
 
 }
@@ -311,7 +314,7 @@ void loop() {
     new_obs[11] = d[0]; // command[0]
     new_obs[12] = d[1]; // command[1]
 
-    new_obs[13] = sin(proj_angle);
+    new_obs[13] = sin(-proj_angle);
     new_obs[14] = cos(proj_angle);
 
     //shift observation history one later
@@ -341,11 +344,13 @@ void loop() {
     last = micros();
 
     float mot_vel_des = constrain(action, -1.0f, 1.0f) * 21.0f;
+    float vel_volt_ctrl = constrain((mot_vel_des - mot_angvel) * 2, -15.0f, 15.0f);
     
 
     if (battery_filt > 20 && run0 > 0){
         if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
-            ser.set(angle.ctrl_velocity_, mot_vel_des);
+            // ser.set(angle.ctrl_velocity_, mot_vel_des);
+            ser.set(angle.ctrl_volts_, vel_volt_ctrl);
         }else if(cmd_mag > 0.5){                                    //manual angle projection control
             
             ser.set(angle.ctrl_angle_, proj_angle_to_motor);
@@ -402,12 +407,12 @@ void loop() {
 
     static long time_print = 0;
 
-    Serial.printf("time_mot_read: %d\n", time_mot_read);
-    Serial.printf("time_imu_read: %d\n", time_imu_read);
-    Serial.printf("time_nn: %d\n", time_nn);
-    Serial.printf("time_mot_set: %d\n", time_mot_set);
-    Serial.printf("time_espnow: %d\n", time_espnow);
-    Serial.printf("time_print: %d\n", time_print);
+    // Serial.printf("time_mot_read: %d\n", time_mot_read);
+    // Serial.printf("time_imu_read: %d\n", time_imu_read);
+    // Serial.printf("time_nn: %d\n", time_nn);
+    // Serial.printf("time_mot_set: %d\n", time_mot_set);
+    // Serial.printf("time_espnow: %d\n", time_espnow);
+    // Serial.printf("time_print: %d\n", time_print);
     Serial.printf("total: %d\n", time_mot_read+time_imu_read+time_nn+time_mot_set+time_espnow+time_print);
     // Serial.printf("kp: %f\n", kp);
     // Serial.printf("kd: %f\n", kd);

@@ -45,7 +45,7 @@ def main():
         run0 = 0
         if joy_data['rightbumper']:
             run0 += 1
-        if joy_data['leftbumper']:
+        if joy_data['righttrigger']>0.5:
             run0 += 2
 
         
