@@ -203,6 +203,6 @@ if __name__ == "__main__":
 
     np.random.seed(1)
     torch.random.manual_seed(1)
-    exp_name = "velctrl_s5r3_2025-04-14_21-07-42"
+    exp_name = "velctrlter_s5r5_2025-04-15_10-13-26"
     rock_eval(exp_name, checkpoint=-1, do_log=True)
 
