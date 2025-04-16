@@ -5,6 +5,8 @@
 #include <WiFi.h>
 
 #include <model_58_02_200.h>
+#include <model_13_26_700.h>
+
 #include <all_ops_resolver.h>
 #include "tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -18,10 +20,17 @@
 #define BNO08X_INT 5
 #define BNO08X_RESET 1
 
-#define input_scale 0.007843082770705223f
-#define input_zero_pt -1
-#define output_scale 0.01251873467117548f
-#define output_zero_pt -14
+// //58_02_200
+// #define input_scale 0.007843082770705223f
+// #define input_zero_pt -1
+// #define output_scale 0.01251873467117548f
+// #define output_zero_pt -14
+
+// 13_26_700
+#define input_scale 0.00784307811409235f
+#define input_zero_pt 0
+#define output_scale 0.028471535071730614f
+#define output_zero_pt -12
 
 /*
     0: spiral rock
@@ -171,7 +180,9 @@ void setup() {
     // model = tflite::GetModel(mnist_model);
     // model = tflite::GetModel(sin_model);
     // model = tflite::GetModel(sin_model_512);
-    model = tflite::GetModel(model_58_02_200);
+
+    // model = tflite::GetModel(model_58_02_200);
+    model = tflite::GetModel(model_13_26_700);
     if (model->version() != TFLITE_SCHEMA_VERSION){
         ESP_LOGE(TAG, "Model provided is schema version %d not equal to supported version %d.", model->version(), TFLITE_SCHEMA_VERSION);
         return;
@@ -223,6 +234,10 @@ float d[2] = {0, 1}; //desired direction initialized to forward
 float quat_imu[4]; //orientation quaternion
 float angvel_imu[3]; //in IMU frame
 float angvel_urdf[3]; //transformed to simulation frame
+
+float vel_volt_ctrl_filt = 0;
+float vel_volt_ctrl_lpf = 0.9378f; //0.012 looptime
+
 
 void loop() {
     //get dt
@@ -345,12 +360,14 @@ void loop() {
 
     float mot_vel_des = constrain(action, -1.0f, 1.0f) * 21.0f;
     float vel_volt_ctrl = constrain((mot_vel_des - mot_angvel) * 2, -15.0f, 15.0f);
+
+    vel_volt_ctrl_filt = (1-vel_volt_ctrl_lpf)*vel_volt_ctrl_filt + vel_volt_ctrl_lpf*vel_volt_ctrl;
     
 
     if (battery_filt > 20 && run0 > 0){
         if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
             // ser.set(angle.ctrl_velocity_, mot_vel_des);
-            ser.set(angle.ctrl_volts_, vel_volt_ctrl);
+            ser.set(angle.ctrl_volts_, vel_volt_ctrl_filt);
         }else if(cmd_mag > 0.5){                                    //manual angle projection control
             
             ser.set(angle.ctrl_angle_, proj_angle_to_motor);
@@ -403,7 +420,7 @@ void loop() {
     // Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
     Serial.printf("d: %f %f\n", d[0], d[1]);
     // Serial.printf("outint: %d\n", output_int);
-    Serial.printf("vel_des: %f\n", mot_vel_des);
+    Serial.printf("vel_des: %f\n", vel_volt_ctrl_filt);
 
     static long time_print = 0;
 
