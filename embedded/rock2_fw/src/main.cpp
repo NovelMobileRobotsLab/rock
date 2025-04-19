@@ -56,10 +56,11 @@ q_imu_to_global: {x, y, z, w} static quaternion to transform sensor quat_imu to 
     float w_origin[3] = {1,0,0};
     float q_imu_to_global[4] = {0, 0.7071068, 0.7071068, 0}; //z axis inverted, x and y swap without negating
 #elif ROCK_ID == 1 // potato rock
-    float motor_zero = 180.0f * PI / 180.0f; //radians
-    float u_origin[3] = {0,0,-1}; //may need to update
-    float v_origin[3] = {1,0,0}; 
+    float motor_zero = 0.0; //radians
+    float u_origin[3] = {-1,0,0}; 
+    float v_origin[3] = {0,0,-1}; 
     float w_origin[3] = {0,-1,0}; 
+    float q_imu_to_global[4] = {0, 0.7071068, -0.7071068, 0}; //untested
 #endif
 
 
@@ -298,11 +299,15 @@ void loop() {
 
     // Compute U,V,W of pendulum in global frame by rotating by IMU quaternion
     float u[3]; //where pendulum points at motorangle=0, towards IMU
-    float v[3]; //perpendicular to u, on pendulum circle plane, y-axis of URDF
+    float v[3]; //perpendicular to u, on pendulum circle plane, y-axis of URDF 
     float w[3]; //motor axis out of motor
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, u_origin, u); //writes to u
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, w_origin, w);
+
+    float thetaM = atan2f(u[2], sqrt(u[0]*u[0] + u[1]*u[1])) - (mapf8192(cmdy)*PI - PI*0.5);
+    float thetaM_motor = thetaM +  2*PI*round((mot_angle - thetaM) / (2*PI)); //find closest rotation to proj_angle
+
     float proj_angle = atan2f(-u[1]*d[0] + u[0]*d[1], v[1]*d[0]-v[0]*d[1]);
     if(w[2]<0){
         proj_angle += PI;
@@ -370,7 +375,8 @@ void loop() {
             ser.set(angle.ctrl_volts_, vel_volt_ctrl_filt);
         }else if(cmd_mag > 0.5){                                    //manual angle projection control
             
-            ser.set(angle.ctrl_angle_, proj_angle_to_motor);
+            //ser.set(angle.ctrl_angle_, proj_angle_to_motor);
+            ser.set(angle.ctrl_angle_, thetaM_motor); 
             // float kp = 4.0f;
             // float v_proportional = constrain(kp*(proj_angle_to_motor - mot_angle), -12.0f, 12.0f);
             // ser.set(angle.ctrl_volts_, v_proportional);
@@ -421,6 +427,11 @@ void loop() {
     Serial.printf("d: %f %f\n", d[0], d[1]);
     // Serial.printf("outint: %d\n", output_int);
     Serial.printf("vel_des: %f\n", vel_volt_ctrl_filt);
+
+
+    Serial.printf("thetaM: %f\n", thetaM);
+    Serial.printf("thetaMtoMotor: %f\n", thetaM_motor);
+
 
     static long time_print = 0;
 
