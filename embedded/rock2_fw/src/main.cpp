@@ -36,7 +36,7 @@
     0: spiral rock
     1: potato rock
 */
-#define ROCK_ID 0
+#define ROCK_ID 1
 
 
 /*
@@ -56,7 +56,7 @@ q_imu_to_global: {x, y, z, w} static quaternion to transform sensor quat_imu to 
     float w_origin[3] = {1,0,0};
     float q_imu_to_global[4] = {0, 0.7071068, 0.7071068, 0}; //z axis inverted, x and y swap without negating
 #elif ROCK_ID == 1 // potato rock
-    float motor_zero = 0.0; //radians
+    float motor_zero = -0.628319; //radians
     float u_origin[3] = {-1,0,0}; 
     float v_origin[3] = {0,0,-1}; 
     float w_origin[3] = {0,-1,0}; 
@@ -138,8 +138,12 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
 
     // Start Vertiq communication
-    Serial1.begin(921600, SERIAL_8N1, D2, D3);
-    // Serial1.begin(115200, SERIAL_8N1, D1, D0); //old rock
+    #if ROCK_ID == 0
+        Serial1.begin(921600, SERIAL_8N1, D2, D3);
+    #else
+        Serial1.begin(115200, SERIAL_8N1, D2, D3); //old rock
+    #endif
+
     pinMode(D1, OUTPUT);
     digitalWrite(D1, LOW); // ground reference for IQ motor
     delay(500);
@@ -201,8 +205,8 @@ void setup() {
     }
     printModelInfo();
 
-    ser.set(angle.angle_Kp_, 5.0f);
-    // ser.set(angle.angle_Kp_, 10.0f);
+    // ser.set(angle.angle_Kp_, 5.0f);
+    ser.set(angle.angle_Kp_, 10.0f);
     
     ser.set(angle.angle_Kd_, 0.15f);
     // ser.set(angle.angle_Kd_, 2.0f);
@@ -305,8 +309,16 @@ void loop() {
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, w_origin, w);
 
-    float thetaM = atan2f(u[2], sqrt(u[0]*u[0] + u[1]*u[1])) - (mapf8192(cmdy)*PI - PI*0.5);
-    float thetaM_motor = thetaM +  2*PI*round((mot_angle - thetaM) / (2*PI)); //find closest rotation to proj_angle
+    float thetaD = mapf8192(cmdy)*PI;
+
+    float uxy = sqrt(u[0]*u[0] + u[1]*u[1]);
+    if(v[2]> 0){
+        uxy = -uxy;
+    }
+
+    float thetaM = (atan2f(u[2], uxy) - (thetaD - PI*0.5));
+    float thetaM_motor = thetaM + motor_zero ; //find closest rotation to proj_angle
+    thetaM_motor = thetaM_motor +  2*PI*round((mot_angle - thetaM_motor) / (2*PI)); //find closest rotation to proj_angle
 
     float proj_angle = atan2f(-u[1]*d[0] + u[0]*d[1], v[1]*d[0]-v[0]*d[1]);
     if(w[2]<0){
@@ -373,7 +385,7 @@ void loop() {
         if(run0 == 3 && cmd_mag > 0.5){                             //run neural net
             // ser.set(angle.ctrl_velocity_, mot_vel_des);
             ser.set(angle.ctrl_volts_, vel_volt_ctrl_filt);
-        }else if(cmd_mag > 0.5){                                    //manual angle projection control
+        }else if(cmd_mag > 0.05){                                    //manual angle projection control
             
             //ser.set(angle.ctrl_angle_, proj_angle_to_motor);
             ser.set(angle.ctrl_angle_, thetaM_motor); 
@@ -420,7 +432,7 @@ void loop() {
     Serial.printf("voltage: %f\n", battery_filt);
     Serial.printf("mot_angle: %f\n", mot_angle * RAD_TO_DEG);
     // Serial.printf("mot_angle_zeroed: %f\n", (mot_angle+motor_zero) * RAD_TO_DEG);
-    // Serial.printf("u: %f %f %f\n", u[0], u[1], u[2]);
+    Serial.printf("u: %f %f %f\n", u[0], u[1], u[2]);
     // Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
     // Serial.printf("w: %f %f %f\n", w[0], w[1], w[2]);
     // Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
@@ -429,8 +441,8 @@ void loop() {
     Serial.printf("vel_des: %f\n", vel_volt_ctrl_filt);
 
 
-    Serial.printf("thetaM: %f\n", thetaM);
-    Serial.printf("thetaMtoMotor: %f\n", thetaM_motor);
+    Serial.printf("thetaM: %f\n", thetaM * RAD_TO_DEG);
+    Serial.printf("thetaMtoMotor: %f\n", thetaM_motor * RAD_TO_DEG);
 
 
     static long time_print = 0;
