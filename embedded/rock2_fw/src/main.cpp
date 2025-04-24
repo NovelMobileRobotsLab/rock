@@ -35,8 +35,9 @@
 /*
     0: spiral rock
     1: potato rock
+    2: faceless rock
 */
-#define ROCK_ID 1
+#define ROCK_ID 2
 
 
 /*
@@ -60,6 +61,12 @@ q_imu_to_global: {x, y, z, w} static quaternion to transform sensor quat_imu to 
     float u_origin[3] = {-1,0,0}; 
     float v_origin[3] = {0,0,-1}; 
     float w_origin[3] = {0,-1,0}; 
+    float q_imu_to_global[4] = {0, 0.7071068, -0.7071068, 0}; //untested
+#elif ROCK_ID == 2 // faceless rock
+    float motor_zero = -2.0769418; //radians
+    float u_origin[3] = {0,1,0}; 
+    float v_origin[3] = {-1,0,0}; 
+    float w_origin[3] = {0,0,1}; 
     float q_imu_to_global[4] = {0, 0.7071068, -0.7071068, 0}; //untested
 #endif
 
@@ -309,7 +316,9 @@ void loop() {
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, w_origin, w);
 
-    float thetaD = mapf8192(cmdy)*PI;
+    float thetaD = mapf8192(cmdy)*PI/2.0;
+    float asymmetry = mapf8192(leftx)*PI/2.0; // angle value added to thetaM
+
 
     float uxy = sqrt(u[0]*u[0] + u[1]*u[1]);
     if(v[2]> 0){
@@ -317,8 +326,9 @@ void loop() {
     }
 
     float thetaM = (atan2f(u[2], uxy) - (thetaD - PI*0.5));
-    float thetaM_motor = thetaM + motor_zero ; //find closest rotation to proj_angle
-    thetaM_motor = thetaM_motor +  2*PI*round((mot_angle - thetaM_motor) / (2*PI)); //find closest rotation to proj_angle
+    thetaM += asymmetry*u[2];
+    float thetaM_motor = thetaM ; //find closest rotation to proj_angle
+    thetaM_motor = thetaM_motor + motor_zero + 2*PI*round((mot_angle - thetaM_motor) / (2*PI)); //find closest rotation to proj_angle
 
     float proj_angle = atan2f(-u[1]*d[0] + u[0]*d[1], v[1]*d[0]-v[0]*d[1]);
     if(w[2]<0){
@@ -433,7 +443,7 @@ void loop() {
     Serial.printf("mot_angle: %f\n", mot_angle * RAD_TO_DEG);
     // Serial.printf("mot_angle_zeroed: %f\n", (mot_angle+motor_zero) * RAD_TO_DEG);
     Serial.printf("u: %f %f %f\n", u[0], u[1], u[2]);
-    // Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
+    Serial.printf("v: %f %f %f\n", v[0], v[1], v[2]);
     // Serial.printf("w: %f %f %f\n", w[0], w[1], w[2]);
     // Serial.printf("proj: %f\n", proj_angle * RAD_TO_DEG);
     Serial.printf("d: %f %f\n", d[0], d[1]);
