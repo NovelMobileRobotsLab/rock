@@ -103,6 +103,7 @@ def get_angle_for_projection_direction(normal, zero_angle, target_direction, rad
 
 # Create the figure and 3D axis
 fig = plt.figure(figsize=(10, 8))
+plt.tight_layout()
 ax = fig.add_subplot(111, projection='3d')
 # Set equal aspect ratio
 ax.set_box_aspect([1, 1, 1])
@@ -116,17 +117,17 @@ radius = 1.0
 
 # Create the initial circle
 circle_points = create_circle_points(initial_normal, initial_zero_angle, radius)
-circle_line, = ax.plot(circle_points[:, 0], circle_points[:, 1], circle_points[:, 2], 'b-')
+circle_line, = ax.plot(circle_points[:, 0], circle_points[:, 1], circle_points[:, 2], 'k-')
 
 # Add the "zero" position marker
 zero_point = get_point_at_angle(initial_normal, initial_zero_angle, 0, radius)
-zero_marker, = ax.plot([0, zero_point[0]], [0, zero_point[1]], [0, zero_point[2]], 'g-', linewidth=2)
+zero_marker, = ax.plot([0, zero_point[0]], [0, zero_point[1]], [0, zero_point[2]], 'r-', linewidth=2)
 # zero_point_marker, = ax.plot([zero_point[0]], [zero_point[1]], [zero_point[2]], 'go', markersize=8)
 
 # Add the angle position marker
 angle_point = get_point_at_angle(initial_normal, initial_zero_angle, initial_angle, radius)
-angle_marker, = ax.plot([0, angle_point[0]], [0, angle_point[1]], [0, angle_point[2]], 'r-', linewidth=2)
-angle_point_marker, = ax.plot([angle_point[0]], [angle_point[1]], [angle_point[2]], 'ro', markersize=8)
+angle_marker, = ax.plot([0, angle_point[0]], [0, angle_point[1]], [0, angle_point[2]],  color='orange', linewidth=2)
+angle_point_marker, = ax.plot([angle_point[0]], [angle_point[1]], [angle_point[2]], 'mo', markersize=8)
 
 # Add projection onto x-y plane
 projection_line, = ax.plot([angle_point[0], angle_point[0]], 
@@ -135,7 +136,7 @@ projection_line, = ax.plot([angle_point[0], angle_point[0]],
 projection_point, = ax.plot([angle_point[0]], [angle_point[1]], [-0.9], 'mo', markersize=6)
 
 # Plot the normal vector
-normal_line, = ax.plot([0, initial_normal[0]], [0, initial_normal[1]], [0, initial_normal[2]], 'k-', linewidth=2)
+normal_line, = ax.plot([0, initial_normal[0]], [0, initial_normal[1]], [0, initial_normal[2]], 'b-', linewidth=2)
 
 # Set the axis limits
 ax.set_xlim([-1.5, 1.5])
@@ -159,11 +160,11 @@ r = [-1, 1]
 x, y = np.meshgrid(r, r)
 # Plot the faces of the cube
 ax.plot_surface(x, y, np.ones_like(x)*-1, alpha=0.1, color='gray')
-ax.plot_surface(x, y, np.ones_like(x), alpha=0.1, color='gray')
-ax.plot_surface(x, np.ones_like(x)*-1, y, alpha=0.1, color='gray')
-ax.plot_surface(x, np.ones_like(x), y, alpha=0.1, color='gray')
-ax.plot_surface(np.ones_like(x)*-1, x, y, alpha=0.1, color='gray')
-ax.plot_surface(np.ones_like(x), x, y, alpha=0.1, color='gray')
+# ax.plot_surface(x, y, np.ones_like(x), alpha=0.1, color='gray')
+# ax.plot_surface(x, np.ones_like(x)*-1, y, alpha=0.1, color='gray')
+# ax.plot_surface(x, np.ones_like(x), y, alpha=0.1, color='gray')
+# ax.plot_surface(np.ones_like(x)*-1, x, y, alpha=0.1, color='gray')
+# ax.plot_surface(np.ones_like(x), x, y, alpha=0.1, color='gray')
 
 # draw a plane at z=-1
 z = np.ones_like(x)*-1
@@ -227,6 +228,12 @@ offset_slider = Slider(
     valstep=0.01,
 )
 
+# ax = plt.gca()
+# ax.set_axis_off()
+# ax._axis3don = False
+
+
+
 # Add target direction visualization
 target_dir = np.array([1, 0, 0])  # Initial direction along x-axis
 target_line, = ax.plot([0, target_dir[0]], [0, target_dir[1]], [-0.9, -0.9], 'y-', linewidth=2)
@@ -246,6 +253,7 @@ def update(val):
         np.sin(theta) * np.sin(phi),
         np.cos(theta)
     ])
+
     
     # Update target direction visualization
     target_dir = np.array([np.cos(target_angle), np.sin(target_angle), 0])
