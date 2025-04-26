@@ -31,6 +31,8 @@ def main():
     timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
     filename = f'cmdlogs/output_{timestamp}.csv'
 
+    # Create the directory if it doesn't exist
+    os.makedirs('cmdlogs', exist_ok=True)
     # write all joystick data into csv file
     
     joy_cmds = ['leftx', 'lefty','rightx', 'righty', 'lefttrigger', 'righttrigger', 'A', 'B', 'X', 'Y', '-', 'home', '+', 'leftstickbutton', 'rightstickbutton', 'leftbumper','rightbumper','dpadup', 'dpaddown','dpadleft', 'dpadright', 'circle']
@@ -40,7 +42,7 @@ def main():
     # write into csv file
     csvfile = open(filename, 'w', newline='')
     writer = csv.DictWriter(csvfile, fieldnames=joy_cmds)
-    writer.writeheader()  # only write header if file is new
+    writer.writeheader()
         
     send_handler = PeriodicSleeper(send_to_estop, 0.01)
     while not done:
