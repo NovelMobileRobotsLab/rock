@@ -3,6 +3,8 @@ import serial.tools.list_ports
 import pygame
 import os
 import time
+import csv
+from datetime import datetime
 
 os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
 pygame.init()
@@ -24,6 +26,22 @@ wheel_speed = 0
 def main():
     global done, ser, cmd_str
 
+    # Make a timestamped filename for controller recordings
+
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
+    filename = f'cmdlogs/output_{timestamp}.csv'
+
+    # write all joystick data into csv file
+    
+    joy_cmds = ['leftx', 'lefty','rightx', 'righty', 'lefttrigger', 'righttrigger', 'A', 'B', 'X', 'Y', '-', 'home', '+', 'leftstickbutton', 'rightstickbutton', 'leftbumper','rightbumper','dpadup', 'dpaddown','dpadleft', 'dpadright', 'circle']
+
+    #file_exists = os.path.isfile(filename)  # check if the file already exists
+
+    # write into csv file
+    csvfile = open(filename, 'w', newline='')
+    writer = csv.DictWriter(csvfile, fieldnames=joy_cmds)
+    writer.writeheader()  # only write header if file is new
+        
     send_handler = PeriodicSleeper(send_to_estop, 0.01)
     while not done:
         while(ser is None):
@@ -35,6 +53,8 @@ def main():
                 time.sleep(0.5)
         
         handle_joysticks()
+        writer.writerows(joy_data)
+
         recv_from_estop() #updates joy_data
 
         cmdx = int(joy_data['rightx'] * 4096 + 4096)
@@ -67,7 +87,8 @@ def main():
         print(cmd_str)
 
         time.sleep(0.01)
-
+    
+    csvfile.close()
 
 
 
@@ -176,6 +197,9 @@ def handle_joysticks():
     global axes_calibrated
     global axes_calibrated_dict
 
+
+    
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             global done
@@ -244,7 +268,7 @@ def handle_joysticks():
                 else:
                     for axis_name in ['leftx', 'lefty', 'rightx', 'righty']:
                         joy_data[axis_name] = 0
-                
+
 
             break #assume only one joystick
 
