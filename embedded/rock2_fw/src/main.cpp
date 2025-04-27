@@ -316,7 +316,7 @@ void loop() {
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, v_origin, v);
     rotateVectorByQuaternion(&sensorValue.un.arvrStabilizedRV, w_origin, w);
 
-    float thetaD = mapf8192(cmdy)*PI/2.0;
+    float thetaD = mapf8192(cmdy)*PI;
     float asymmetry = mapf8192(leftx)*PI/2.0; // angle value added to thetaM
 
 
