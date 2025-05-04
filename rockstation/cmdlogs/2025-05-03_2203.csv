@@ -1,0 +1,1 @@
+battery_filt,mot_angle,mot_angvel,thetaM_motor,quat_imu[0],quat_imu[1],quat_imu[2],quat_imu[3],angvel_imu[0],angvel_imu[1],angvel_imu[2],leftx,lefty,rightx,righty,lefttrigger,righttrigger,A,B,X,Y,-,home,+,leftstickbutton,rightstickbutton,leftbumper,rightbumper,dpadup,dpaddown,dpadleft,dpadright,circle

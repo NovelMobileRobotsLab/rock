@@ -7,6 +7,9 @@
 #include <model_58_02_200.h>
 #include <model_13_26_700.h>
 
+#include <vector>
+#include <base64.hpp>
+
 #include <all_ops_resolver.h>
 #include "tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -425,16 +428,39 @@ void loop() {
         lefty = receivedString.substring(receivedString.indexOf("lefty") + 6, receivedString.indexOf("lefty") + 11).toInt();
         run0 = receivedString.substring(receivedString.indexOf("run0") + 5, receivedString.indexOf("run0") + 10).toInt();
     }
+
+
+    
+
     size_t send_str_size = sprintf(send_str,
         "v:%.2f\n"
         ,
         battery_voltage
     );
-    esp_now_send(estop_mac_addr, (uint8_t *) send_str, send_str_size);
+    // esp_now_send(estop_mac_addr, (uint8_t *) send_str, send_str_size);
 
     long time_espnow = micros() - last;
 
+    std::vector<float> telemetry;
+    telemetry.push_back(battery_filt);
+    telemetry.push_back(mot_angle);
+    telemetry.push_back(mot_angvel);
+    telemetry.push_back(thetaM_motor); //des motor angle
+    telemetry.push_back(quat_imu[0]);
+    telemetry.push_back(quat_imu[1]);
+    telemetry.push_back(quat_imu[2]);
+    telemetry.push_back(quat_imu[3]);
+    telemetry.push_back(angvel_imu[0]);
+    telemetry.push_back(angvel_imu[1]);
+    telemetry.push_back(angvel_imu[2]);
 
+    size_t in_len_bytes = telemetry.size() * sizeof(float); //  How many bytes of raw float data?
+    const unsigned char* in_ptr = reinterpret_cast<const unsigned char*>(telemetry.data());
+    unsigned int max_out_len = static_cast<unsigned int>(((in_len_bytes + 2) / 3) * 4 + 1); //Compute a safe upper‑bound on Base64 output length
+    std::unique_ptr<unsigned char[]> out_buf(new unsigned char[max_out_len]); //Allocate the output buffer
+    unsigned int encoded_len = encode_base64(in_ptr, static_cast<unsigned int>(in_len_bytes), out_buf.get()); // Call encoder
+    const char* payload = reinterpret_cast<const char*>(out_buf.get());
+    esp_now_send(estop_mac_addr, (uint8_t *) payload, encoded_len);
 
     // Serial.printf("dt: %d\n", dt);
     // Serial.printf("status: %d\n", sensorValue.status);
@@ -453,6 +479,8 @@ void loop() {
 
     Serial.printf("thetaM: %f\n", thetaM * RAD_TO_DEG);
     Serial.printf("thetaMtoMotor: %f\n", thetaM_motor * RAD_TO_DEG);
+
+    Serial.printf("telemetry: %s\n", payload);
 
 
     static long time_print = 0;

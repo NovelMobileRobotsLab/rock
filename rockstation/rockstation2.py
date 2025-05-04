@@ -5,159 +5,17 @@ import os
 import time
 import csv
 from datetime import datetime
-
-os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
-pygame.init()
-screen = pygame.display.set_mode((50, 50))
-port = "/dev/cu.usbmodem1101" # for mac
-ser = None
-done = False
-
-cmd_str = ""
-message = '' # received
-messagebuffer = ''
-telemetry = {
-    'v': 0
-}
-delimiter = '\t'
-
-wheel_speed = 0
-
-def main():
-    global done, ser, cmd_str
-
-    # Make a timestamped filename for controller recordings
-
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
-    filename = f'cmdlogs/output_{timestamp}.csv'
-
-    # Create the directory if it doesn't exist
-    os.makedirs('cmdlogs', exist_ok=True)
-    # write all joystick data into csv file
-    
-    joy_cmds = ['leftx', 'lefty','rightx', 'righty', 'lefttrigger', 'righttrigger', 'A', 'B', 'X', 'Y', '-', 'home', '+', 'leftstickbutton', 'rightstickbutton', 'leftbumper','rightbumper','dpadup', 'dpaddown','dpadleft', 'dpadright', 'circle']
-
-    #file_exists = os.path.isfile(filename)  # check if the file already exists
-
-    # write into csv file
-    csvfile = open(filename, 'w', newline='')
-    writer = csv.DictWriter(csvfile, fieldnames=joy_cmds)
-    writer.writeheader()
-        
-    send_handler = PeriodicSleeper(send_to_estop, 0.01)
-    while not done:
-        while(ser is None):
-            try:
-                ser = serial.Serial(port, baudrate=115200, timeout=1, stopbits=serial.STOPBITS_TWO)
-            except:
-                ser = None
-                print("plug in estop pls")
-                time.sleep(0.5)
-        
-        handle_joysticks()
-        print(joy_data)
-        writer.writerows([joy_data])
-
-        recv_from_estop() #updates joy_data
-
-        cmdx = int(joy_data['rightx'] * 4096 + 4096)
-        cmdy = int(joy_data['righty'] * 4096 + 4096)
-        leftx = int(joy_data['leftx'] * 4096 + 4096)
-        lefty = int(joy_data['lefty'] * 4096 + 4096)
-
-        run0 = 0
-        if joy_data['rightbumper']:
-            run0 += 1
-        if joy_data['righttrigger']>0.5:
-            run0 += 2
-
-        
-
-        # if "estopped:0" in message:
-        #     run = 0
-        try:
-            if(telemetry['estopped'] == 1): run = 0
-        except Exception as e:
-            print('nodata', e)
-        cmd_str = ""
-        cmd_str += f"cmdx:{cmdx:05}\n"
-        cmd_str += f"cmdy:{cmdy:05}\n"
-        cmd_str += f"leftx:{leftx:05}\n"
-        cmd_str += f"lefty:{lefty:05}\n"
-        cmd_str += f"run0:{run0:05}\n"
-        cmd_str += "#\t"
-
-        print(cmd_str)
-
-        time.sleep(0.01)
-    
-    csvfile.close()
+import re
+import base64, struct
 
 
+PORT = "/dev/cu.usbmodem1101" # for mac
 
-def send_to_estop():
-    global ser, cmd_str
-    if(ser is None):
-        return
+ser = None      #serial port for estop
+done = False    #exit flag, set to true if pygame window is closed    
 
-    try:
-        ser.write(cmd_str.encode())
-    except Exception as e:
-        print(e)
-        ser = None
-        print("Estop disconnected")
-
-
-def recv_from_estop():
-    # print(ser.read_all().decode("utf-8", errors='ignore'), end=None)
-    global ser
-    global messagebuffer
-    global message
-    global axes_calibrated
-
-    messagecount = 0
-
-    try:
-        if ser.in_waiting > 0:
-            uarttext = ser.read_all().decode('utf-8', errors='ignore')
-            
-            ending=0
-            while(uarttext):
-                ending = uarttext.find(delimiter)
-                if(ending == -1):
-                    break
-
-                message += uarttext[0:ending]
-
-                print(message)            # Uncomment to print message to terminal
-
-                messagebuffer = message
-                # print(messagebuffer)
-
-                lines = messagebuffer.split('\n')
-                for line in lines:
-                    parts = line.split(':')
-                    key = parts[0].strip()
-                    try:
-                        value = float(parts[1].strip())
-                    except Exception:
-                        continue
-                    telemetry[key] = value
-
-                messagecount += 1
-                message = "" #clear message
-                uarttext = uarttext[ending+len(delimiter):] #front of buffer used up
-
-            message = uarttext #whatver is left over
-        
-    except Exception as e:
-        print(e)
-        return
-    
 
 # JOYSTICK
-
-joysticks = {}
 joy_data = {
     'leftx': 0,
     'lefty': 0,
@@ -192,22 +50,19 @@ axes_calibrated_dict = {
     'righty+': False,
     'righty-': False
 }
-
-global axes_calibrated
 axes_calibrated = False
 
+# Runs every main loop
 def handle_joysticks():
     global axes_calibrated
     global axes_calibrated_dict
-
-
-    
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             global done
             done = True
 
+        joysticks = {}
         if event.type == pygame.JOYDEVICEADDED:
             joy = pygame.joystick.Joystick(event.device_index)
             joysticks[joy.get_instance_id()] = joy
@@ -276,8 +131,151 @@ def handle_joysticks():
             break #assume only one joystick
 
     if(not axes_calibrated):
-            print("please calibrate joysticks")
-            print("move axes in a circle")
+        print("please calibrate joysticks")
+        print("move axes in a circle")
+
+
+def main():
+    global done, ser, joy_data
+
+    # Start pygame in order to read joysticks
+    os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1' #makes sure that joystick still reads if user is not focused on pygame window
+    pygame.init()
+    pygame.display.set_mode((50, 50))
+    
+
+    # Data received from rock is interpreted using regex and stored in the telemetry dictionary
+    telemetry = {}
+    rock_telemetry_labels = [
+        'battery_filt',
+        'mot_angle',
+        'mot_angvel',
+        'thetaM_motor',
+        'quat_imu[0]',
+        'quat_imu[1]',
+        'quat_imu[2]',
+        'quat_imu[3]',
+        'angvel_imu[0]',
+        'angvel_imu[1]',
+        'angvel_imu[2]',
+    ]
+    pattern = re.compile( # regex for parsing telemetry string returned from estop
+        r'(?m)^[A-Za-z_]+:(\d+)\r?\n[A-Za-z_]+:(\d+)\r?\n[A-Za-z_]+:(\d+)\r?\n(.+)$' # 3 lines of label:int\n followed by a string
+    )
+
+
+    # Prepare to write telemetry and joystick data into csv file
+    os.makedirs('cmdlogs', exist_ok=True)
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
+    filename = f'cmdlogs/{timestamp}.csv'
+    csvfile = open(filename, 'w', newline='')
+    fieldnames = rock_telemetry_labels + list(joy_data.keys())
+    csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    csvwriter.writeheader()
+
+
+    # Start another thread to send cmd_str to estop periodically
+    cmd_str = ""    #string to send to estop, will be overwritten later in main loop
+    def send_to_estop():
+        global ser, cmd_str
+        if(ser is None):
+            return
+        try:
+            ser.write(cmd_str.encode())
+        except Exception as e:
+            print(e)
+            ser = None
+            print("Estop disconnected")
+    PeriodicSleeper(send_to_estop, 0.01)
+        
+
+    # Main loop
+    last_time = time.time()
+    while not done:
+        time.sleep(0.01) # makes loop run a bit slower than 100Hz
+        dt = time.time() - last_time
+        last_time = time.time()
+        print(f"dt: {dt:.5f}") 
+
+
+        # Read joystick data and puts it into joy_data
+        handle_joysticks()
+        
+
+        # Establish serial connection with estop, wait until established
+        while(ser is None):
+            try:
+                ser = serial.Serial(PORT, baudrate=115200, timeout=1, stopbits=serial.STOPBITS_TWO)
+            except:
+                ser = None
+                print("plug in estop pls")
+                time.sleep(0.5)
+    
+
+        # Reads from estop serial port to get connection status and update telemetry.
+        # Expected string received from estop: "station_ok:1\nespnow_ok:1\nestopped:0\n<base64 encoded float array>\n"
+        s = ser.read_all().decode('utf-8', errors='ignore')
+        m = pattern.search(s)
+        if m:
+            telemetry['station_ok'] = m.group(1)
+            telemetry['espnow_ok'] = m.group(2)
+            telemetry['estopped'] = m.group(3)
+            payload = m.group(4)
+            try:
+                raw = base64.b64decode(payload)
+                n = len(raw) // 4
+                floats = struct.unpack(f'<{n}f', raw)
+                for i in range(len(floats)):
+                    telemetry[rock_telemetry_labels[i]] = floats[i]
+            except Exception as e:
+                print(e)
+        
+
+        # Print telemetry received from estop
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nTelemetry")
+        for key in telemetry:
+            if isinstance(telemetry[key], float):  # Print floats with 3 decimal places
+                print(f"{key}: {telemetry[key]:0.3f}")
+            else:
+                print(f"{key}: {telemetry[key]}")
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+
+        # Generate commands using joystick data
+        cmdx = int(joy_data['rightx'] * 4096 + 4096)
+        cmdy = int(joy_data['righty'] * 4096 + 4096)
+        leftx = int(joy_data['leftx'] * 4096 + 4096)
+        lefty = int(joy_data['lefty'] * 4096 + 4096)
+        run0 = 0
+        if joy_data['rightbumper']:
+            run0 += 1
+        if joy_data['righttrigger']>0.5:
+            run0 += 2
+
+
+        # Builds cmd_str to send to estop serial port, actually sent by send_to_estop function
+        # Expected string: "cmdx:4096\ncmdy:4096\nleftx:4096\nlefty:4096\nrun0:0\n"
+        try:
+            if(telemetry['estopped'] == 1): run0 = 0
+        except Exception as e:
+            print('nodata', e)
+        cmd_str = ""
+        cmd_str += f"cmdx:{cmdx:05}\n"
+        cmd_str += f"cmdy:{cmdy:05}\n"
+        cmd_str += f"leftx:{leftx:05}\n"
+        cmd_str += f"lefty:{lefty:05}\n"
+        cmd_str += f"run0:{run0:05}\n"
+        cmd_str += "#\t"
+        print(cmd_str)
+
+
+        # Write telemetry and joystick data into csv file
+        combined_dict = {**telemetry, **joy_data}
+        csvwriter.writerows([combined_dict])
+
+
+    # Close csv file once main loop is done
+    csvfile.close()
 
 
 if __name__ == "__main__":
