@@ -8,6 +8,10 @@ from datetime import datetime
 import re
 import base64, struct
 
+# Start pygame in order to read joysticks
+os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1' #makes sure that joystick still reads if user is not focused on pygame window
+pygame.init()
+pygame.display.set_mode((50, 50))
 
 PORT = "/dev/cu.usbmodem1101" # for mac
 
@@ -58,6 +62,7 @@ def handle_joysticks():
     global axes_calibrated_dict
 
     for event in pygame.event.get():
+        print("eventt")
         if event.type == pygame.QUIT:
             global done
             done = True
@@ -135,17 +140,20 @@ def handle_joysticks():
         print("move axes in a circle")
 
 
+
+
 def main():
     global done, ser, joy_data
 
-    # Start pygame in order to read joysticks
-    os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1' #makes sure that joystick still reads if user is not focused on pygame window
-    pygame.init()
-    pygame.display.set_mode((50, 50))
     
 
     # Data received from rock is interpreted using regex and stored in the telemetry dictionary
     telemetry = {}
+    estop_labels = [
+        'estopped',
+        'espnow_ok',
+        'station_ok',
+    ]
     rock_telemetry_labels = [
         'battery_filt',
         'mot_angle',
@@ -169,12 +177,14 @@ def main():
     timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
     filename = f'cmdlogs/{timestamp}.csv'
     csvfile = open(filename, 'w', newline='')
-    fieldnames = rock_telemetry_labels + list(joy_data.keys())
+    fieldnames = estop_labels + rock_telemetry_labels + list(joy_data.keys())
+    print(fieldnames)
     csvwriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
     csvwriter.writeheader()
 
 
     # Start another thread to send cmd_str to estop periodically
+    global cmd_str
     cmd_str = ""    #string to send to estop, will be overwritten later in main loop
     def send_to_estop():
         global ser, cmd_str
@@ -228,7 +238,11 @@ def main():
                 for i in range(len(floats)):
                     telemetry[rock_telemetry_labels[i]] = floats[i]
             except Exception as e:
-                print(e)
+                print(f"No telemetry: {e}")
+        else:
+            telemetry['station_ok'] = 0
+            telemetry['espnow_ok'] = 0
+            telemetry['estopped'] = 0
         
 
         # Print telemetry received from estop
@@ -270,8 +284,8 @@ def main():
 
 
         # Write telemetry and joystick data into csv file
-        combined_dict = {**telemetry, **joy_data}
-        csvwriter.writerows([combined_dict])
+        # combined_dict = {**telemetry, **joy_data}
+        # csvwriter.writerows([combined_dict])
 
 
     # Close csv file once main loop is done

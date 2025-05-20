@@ -3,13 +3,13 @@ import serial.tools.list_ports
 import pygame
 import os
 import time
-import re
+import csv
+from datetime import datetime
 
 os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
 pygame.init()
 screen = pygame.display.set_mode((50, 50))
-port = "/dev/cu.usbmodem1101" # for estop
-port_joystick = "/dev/cu.usbmodem1301" # for joystick
+port = "/dev/cu.usbmodem1101" # for mac
 ser = None
 done = False
 
@@ -22,13 +22,28 @@ telemetry = {
 delimiter = '\t'
 
 wheel_speed = 0
-ser_joy = None
-crank_val = 0
 
 def main():
     global done, ser, cmd_str
-    global ser_joy, crank_val
 
+    # Make a timestamped filename for controller recordings
+
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H%M')
+    filename = f'cmdlogs/output_{timestamp}.csv'
+
+    # Create the directory if it doesn't exist
+    os.makedirs('cmdlogs', exist_ok=True)
+    # write all joystick data into csv file
+    
+    joy_cmds = ['leftx', 'lefty','rightx', 'righty', 'lefttrigger', 'righttrigger', 'A', 'B', 'X', 'Y', '-', 'home', '+', 'leftstickbutton', 'rightstickbutton', 'leftbumper','rightbumper','dpadup', 'dpaddown','dpadleft', 'dpadright', 'circle']
+
+    #file_exists = os.path.isfile(filename)  # check if the file already exists
+
+    # write into csv file
+    csvfile = open(filename, 'w', newline='')
+    writer = csv.DictWriter(csvfile, fieldnames=joy_cmds)
+    writer.writeheader()
+        
     send_handler = PeriodicSleeper(send_to_estop, 0.01)
     while not done:
         while(ser is None):
@@ -40,31 +55,15 @@ def main():
                 time.sleep(0.5)
         
         handle_joysticks()
+        print(joy_data)
+        writer.writerows([joy_data])
+
         recv_from_estop() #updates joy_data
-
-        # read from serial port port_joystick
-        # while(ser_joy is None):
-        #     try:
-        #         ser_joy = serial.Serial(port_joystick, baudrate=115200, timeout=1, stopbits=serial.STOPBITS_TWO)
-        #     except Exception as e:
-        #         print(e)
-        #         ser_joy = None
-        #         print("plug in joy pls")
-        #         time.sleep(0.5)
-
-        # if ser_joy.in_waiting > 0:
-        #     uarttext = ser_joy.read_all().decode('utf-8', errors='ignore')
-        #     # print(uarttext)
-        #     match = re.search(r"pos:\s*([-+]?\d*\.?\d+)", uarttext)
-        #     if match:
-        #         crank_val = float(match.group(1))
 
         cmdx = int(joy_data['rightx'] * 4096 + 4096)
         cmdy = int(joy_data['righty'] * 4096 + 4096)
         leftx = int(joy_data['leftx'] * 4096 + 4096)
         lefty = int(joy_data['lefty'] * 4096 + 4096)
-
-        # cmdy = int(((crank_val%4096/2048)-1) * 4096 + 4096)
 
         run0 = 0
         if joy_data['rightbumper']:
@@ -86,13 +85,13 @@ def main():
         cmd_str += f"leftx:{leftx:05}\n"
         cmd_str += f"lefty:{lefty:05}\n"
         cmd_str += f"run0:{run0:05}\n"
-        cmd_str += f"crank:{crank_val:05}\n"
         cmd_str += "#\t"
 
         print(cmd_str)
 
         time.sleep(0.01)
-
+    
+    csvfile.close()
 
 
 
@@ -201,6 +200,9 @@ def handle_joysticks():
     global axes_calibrated
     global axes_calibrated_dict
 
+
+    
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             global done
@@ -269,7 +271,7 @@ def handle_joysticks():
                 else:
                     for axis_name in ['leftx', 'lefty', 'rightx', 'righty']:
                         joy_data[axis_name] = 0
-                
+
 
             break #assume only one joystick
 
