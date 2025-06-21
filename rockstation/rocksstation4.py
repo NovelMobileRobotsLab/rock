@@ -40,9 +40,9 @@ def main():
     #file_exists = os.path.isfile(filename)  # check if the file already exists
 
     # write into csv file
-    csvfile = open(filename, 'w', newline='')
-    writer = csv.DictWriter(csvfile, fieldnames=joy_cmds)
-    writer.writeheader()
+    # csvfile = open(filename, 'w', newline='')
+    # writer = csv.DictWriter(csvfile, fieldnames=joy_cmds)
+    # writer.writeheader()
         
     send_handler = PeriodicSleeper(send_to_estop, 0.01)
     while not done:
@@ -56,7 +56,7 @@ def main():
         
         handle_joysticks()
         print(joy_data)
-        writer.writerows([joy_data])
+        # writer.writerows([joy_data])
 
         recv_from_estop() #updates joy_data
 
@@ -91,7 +91,7 @@ def main():
 
         time.sleep(0.01)
     
-    csvfile.close()
+    # csvfile.close()
 
 
 
